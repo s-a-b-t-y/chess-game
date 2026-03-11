@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Chess - Sabty</title>
+    <link rel="shortcut icon" href="library/chessFav.jfif" type="image/x-icon">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@200;300;400;500&family=Fira+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <div id="app">
+        <header class="header">
+            <div class="logo">Nocturne <span>Chess</span></div>
+            <div class="subtitle">Click to move &nbsp;·&nbsp; Drag &amp; Drop &nbsp;·&nbsp; vs AI</div>
+        </header>
+        <div class="mode-bar">
+            <button class="mode-btn active" id="mode-human" onclick="setMode('human')">👤 Two Players</button>
+            <button class="mode-btn" id="mode-ai" onclick="setMode('ai')">🤖 vs AI</button>
+        </div>
+        <div class="game-wrap">
+            <div class="sidebar">
+                <div class="card" id="black-card">
+                    <div class="card-label">Black</div>
+                    <div class="player-row">
+                        <div class="avatar" id="black-avatar">♛</div>
+                        <div>
+                            <div class="p-name" id="black-name">Player 2</div>
+                            <div class="p-label" id="black-sub">Black pieces</div>
+                        </div>
+                    </div>
+                    <div class="diff-row" id="diff-row" style="display:none">
+                        <button class="diff-btn" data-d="1" onclick="setDiff(1)">Easy</button>
+                        <button class="diff-btn active" data-d="2" onclick="setDiff(2)">Med</button>
+                        <button class="diff-btn" data-d="3" onclick="setDiff(3)">Hard</button>
+                    </div>
+                    <div class="ai-thinking" id="ai-thinking">
+                        <span>Thinking</span>
+                        <span class="dots"><span>•</span><span>•</span><span>•</span></span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Black captured</div>
+                    <div class="captured-row" id="cap-black"></div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Move history</div>
+                    <div class="history-list" id="hist-list"></div>
+                </div>
+            </div>
+
+            <div class="board-wrap">
+                <div class="board-shell" id="board-shell">
+                    <div class="board-inner">
+                        <div class="rank-col" id="rank-col"></div>
+                        <div>
+                            <div id="board">
+                                <!-- flying piece lives inside board for correct absolute positioning -->
+                                <div id="flying-piece"></div>
+                            </div>
+                            <div class="file-row" id="file-row"></div>
+                        </div>
+                    </div>
+                    <div class="gameover" id="gameover">
+                        <div class="go-title" id="go-title">Checkmate</div>
+                        <div class="go-sub" id="go-sub">White wins</div>
+                        <button class="go-btn" onclick="newGame()">Play Again</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card" id="white-card">
+                    <div class="card-label">White</div>
+                    <div class="player-row">
+                        <div class="avatar">♔</div>
+                        <div>
+                            <div class="p-name">Player 1</div>
+                            <div class="p-label">White pieces</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-label">White captured</div>
+                    <div class="captured-row" id="cap-white"></div>
+                </div>
+                <div class="card status-card">
+                    <div class="card-label">Status</div>
+                    <div class="status-main" id="status-main">White to move</div>
+                    <div class="status-sub" id="status-sub">Opening</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Controls</div>
+                    <div class="ctrl-group">
+                        <button class="btn primary" onclick="newGame()">⟳ New Game</button>
+                        <button class="btn" onclick="undoMove()">↩ Undo</button>
+                        <button class="btn" onclick="flipBoard()">⇅ Flip</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="footer">Nocturne Chess &nbsp;·&nbsp; Minimax AI · Click or Drag to move</footer>
+    </div>
+
+    <div class="overlay" id="promo-overlay">
+        <div class="promo-modal">
+            <div class="promo-title">Promote your pawn</div>
+            <div class="promo-choices" id="promo-choices"></div>
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+
+</html>
