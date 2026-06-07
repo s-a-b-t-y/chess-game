@@ -108,6 +108,11 @@
         </div>
     </div>
 
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="../Database/firebase-db.js"></script>
+
     <script>
         let signupMethod = 'gmail';
 
@@ -154,7 +159,7 @@
             }
         }
 
-        function handleSignupSubmit(event) {
+        async function handleSignupSubmit(event) {
             event.preventDefault();
             const usernameInput = document.getElementById('signup-username').value.trim();
             const passwordInput = document.getElementById('signup-password').value;
@@ -204,7 +209,76 @@
                 return;
             }
             
-            // Fetch users from localStorage
+            const newUser = {
+                username: usernameInput,
+                password: passwordInput,
+                email: signupMethod === 'gmail' ? gmailVal : null,
+                phone: signupMethod === 'phone' ? phoneVal : null,
+                stats: { played: 0, wins: 0, losses: 0, draws: 0 }
+            };
+
+            // 1. Try Firebase signup if ready
+            if (window.firebaseReady && window.db) {
+                try {
+                    const submitBtn = event.target.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn.textContent;
+                    submitBtn.textContent = 'Registering...';
+                    submitBtn.disabled = true;
+
+                    // Check if username taken in Firestore
+                    const docRef = db.collection('users').doc(usernameInput);
+                    const userDoc = await docRef.get();
+                    if (userDoc.exists) {
+                        errorEl.textContent = 'Username is already taken.';
+                        errorEl.style.display = 'block';
+                        submitBtn.textContent = originalBtnText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+
+                    // Check if email or phone is already registered in Firestore
+                    if (signupMethod === 'gmail') {
+                        const emailQuery = await db.collection('users').where('email', '==', gmailVal).get();
+                        if (!emailQuery.empty) {
+                            errorEl.textContent = 'This Gmail address is already registered.';
+                            errorEl.style.display = 'block';
+                            submitBtn.textContent = originalBtnText;
+                            submitBtn.disabled = false;
+                            return;
+                        }
+                    } else {
+                        const phoneQuery = await db.collection('users').where('phone', '==', phoneVal).get();
+                        if (!phoneQuery.empty) {
+                            errorEl.textContent = 'This phone number is already registered.';
+                            errorEl.style.display = 'block';
+                            submitBtn.textContent = originalBtnText;
+                            submitBtn.disabled = false;
+                            return;
+                        }
+                    }
+
+                    // Register user in Firestore
+                    await docRef.set(newUser);
+                    
+                    // Sync to LocalStorage fallback too
+                    const users = JSON.parse(localStorage.getItem('users') || '{}');
+                    users[usernameInput] = newUser;
+                    localStorage.setItem('users', JSON.stringify(users));
+
+                    submitBtn.textContent = originalBtnText;
+                    submitBtn.disabled = false;
+                    successEl.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        window.location.href = 'signin.html';
+                    }, 1500);
+                    return;
+                } catch (error) {
+                    console.error("Firestore registration failed, falling back to localStorage:", error);
+                }
+            }
+            
+            // 2. Local Storage fallback if firebase is offline/not initialized
             const users = JSON.parse(localStorage.getItem('users') || '{}');
             
             // Check if username is taken
@@ -229,16 +303,10 @@
                 }
             }
             
-            // Register user
-            users[usernameInput] = {
-                username: usernameInput,
-                password: passwordInput,
-                email: signupMethod === 'gmail' ? gmailVal : null,
-                phone: signupMethod === 'phone' ? phoneVal : null,
-                stats: { played: 0, wins: 0, losses: 0, draws: 0 }
-            };
-            
+            // Register user locally
+            users[usernameInput] = newUser;
             localStorage.setItem('users', JSON.stringify(users));
+            
             successEl.style.display = 'block';
             
             // Redirect to login page after 1.5s

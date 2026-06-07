@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Match any document in the 'users' collection
+    match /users/{username} {
+      // Allow read access so profiles and leaderboards can be retrieved
+      // Allow create and update access so users can register and update game statistics
+      allow read, create, update: if true;
+      
+      // Prevent users from deleting account documents
+      allow delete: if false;
+
+      // Allow read/write access to user's friends subcollection
+      match /friends/{friendUsername} {
+        allow read, write: if true;
+      }
+    }
+
+    // Match any document in the 'challenges' collection
+    match /challenges/{challengeId} {
+      allow read, write: if true;
+    }
+    
+  }
+}

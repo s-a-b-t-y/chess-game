@@ -173,6 +173,37 @@
                         <!-- Populated dynamically via JS -->
                     </div>
                 </div>
+
+                <!-- Social Hub Card -->
+                <div class="card social-card" id="social-card" style="display: none;">
+                    <div class="card-label">Social Hub</div>
+                    <div class="social-tabs">
+                        <button class="social-tab-btn active" id="stab-friends" onclick="setSocialTab('friends')">Friends</button>
+                        <button class="social-tab-btn" id="stab-challenges" onclick="setSocialTab('challenges')">Challenges</button>
+                    </div>
+                    
+                    <!-- Friends Tab Content -->
+                    <div class="social-tab-content" id="social-tab-friends">
+                        <form id="add-friend-form" class="social-add-form" onsubmit="handleAddFriend(event)">
+                            <input type="text" id="friend-username-input" placeholder="Enter friend's username" required autocomplete="off">
+                            <button type="submit" class="btn btn-primary btn-sm">Add Friend</button>
+                        </form>
+                        <div id="add-friend-message" class="social-msg" style="display: none;"></div>
+                        <div class="social-list" id="friends-list">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Challenges Tab Content -->
+                    <div class="social-tab-content" id="social-tab-challenges" style="display: none;">
+                        <div class="social-actions">
+                            <button class="btn btn-primary btn-sm btn-block" onclick="createChallengeLink()">🔗 Generate Invite Link</button>
+                        </div>
+                        <div class="social-list" id="challenges-list">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Rules & FAQ Section -->
@@ -295,6 +326,7 @@
                             <button class="btn btn-primary btn-game" onclick="newGame()">⟳ New Game</button>
                             <button class="btn btn-game" onclick="undoMove()">↩ Undo</button>
                             <button class="btn btn-game" onclick="flipBoard()">⇅ Flip</button>
+                            <button class="btn btn-resign btn-game" id="btn-resign-game" onclick="resignChallenge()" style="display: none;">🏳 Resign</button>
                         </div>
                     </div>
                 </div>
@@ -311,6 +343,26 @@
             <div class="promo-choices" id="promo-choices"></div>
         </div>
     </div>
+
+    <!-- CHALLENGE LINK DIALOG OVERLAY -->
+    <div class="overlay" id="challenge-link-overlay">
+        <div class="promo-modal" style="max-width: 450px;">
+            <div class="promo-title">Share Challenge Link</div>
+            <p style="margin-bottom: 16px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">Send this link to a friend. Once they open it, the match will start in real-time!</p>
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="challenge-link-input" readonly style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: monospace; font-size: 0.8rem; text-align: center;" onclick="this.select()">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-primary btn-sm btn-block" onclick="copyChallengeLinkText()">📋 Copy Link</button>
+                <button class="btn btn-secondary btn-sm" onclick="closeChallengeLinkModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="Database/firebase-db.js"></script>
 
     <script src="index.js"></script>
 </body>

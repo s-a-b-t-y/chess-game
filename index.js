@@ -1,11 +1,16 @@
 /* ================================================================
    CHESS ENGINE
 ================================================================ */
-const G = { wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙', bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟' };
+const G = { 
+    wK: '♚', wQ: '♛', wR: '♜', wB: '♝', wN: '♞', wP: '♟', 
+    bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟' 
+};
 let board, turn, sel, lvs = [], capW = [], capB = [], mhist = [], shist = [];
 let lf = null, lt = null, flipped = false, over = false, ep = null;
 let cr = { wK: true, wQ: true, bK: true, bQ: true };
 let pending = null, gameMode = 'human', diff = 2, aiWorking = false;
+let activeChallengeId = null, myPlayerColor = null, opponentUsername = null;
+let activeSocialTab = 'friends', challengeUnsubscribe = null, socialUnsubscribe = null, challengesUnsubscribe = null;
 
 const opp = c => c === 'w' ? 'b' : 'w';
 const pc = p => p ? p[0] : null;
@@ -21,7 +26,7 @@ function init() {
     for (let c = 0; c < 8; c++) { board[1][c] = 'bP'; board[6][c] = 'wP' }
     turn = 'w'; sel = null; lvs = []; capW = []; capB = []; mhist = []; shist = [];
     lf = null; lt = null; over = false; ep = null; cr = { wK: true, wQ: true, bK: true, bQ: true };
-    pending = null; aiWorking = false; dragState = null;
+    pending = null; aiWorking = false; dragState = null; activeChallengeId = null;
 }
 
 function findK(b, col) { for (let r = 0; r < 8; r++)for (let c = 0; c < 8; c++)if (b[r][c] === col + 'K') return [r, c]; return null }
@@ -114,6 +119,11 @@ function pieceCenter(r, c) {
 function animateMove(pieceGlyph, fr, fc, tr, tc, onDone) {
     animating = true;
     fp.textContent = pieceGlyph;
+    
+    const pieceCode = board[fr][fc];
+    const isWhite = pieceCode && pieceCode[0] === 'w';
+    fp.className = 'piece ' + (isWhite ? 'white-piece' : 'black-piece');
+    
     fp.style.display = 'block';
     fp.style.transition = 'none';
     fp.classList.remove('animate', 'drag-scale');
@@ -121,18 +131,14 @@ function animateMove(pieceGlyph, fr, fc, tr, tc, onDone) {
     const from = pieceCenter(fr, fc);
     const to = pieceCenter(tr, tc);
 
-    fp.style.left = from.x + 'px';
-    fp.style.top = from.y + 'px';
-    fp.style.transform = 'scale(1)';
+    fp.style.transform = `translate3d(${from.x}px, ${from.y}px, 0) scale(1)`;
 
     // Force reflow then start transition
     fp.getBoundingClientRect();
     fp.classList.add('animate');
-    fp.style.left = to.x + 'px';
-    fp.style.top = to.y + 'px';
-    fp.style.transform = 'scale(1.08)';
+    fp.style.transform = `translate3d(${to.x}px, ${to.y}px, 0) scale(1.08)`;
 
-    const dur = 240;
+    const dur = 260;
     setTimeout(() => {
         fp.style.display = 'none';
         fp.classList.remove('animate');
@@ -174,6 +180,7 @@ function doMove(m, promoType, skipAnim) {
         else if (st2) { over = true; showGO('Stalemate', 'The game is drawn') }
         renderB(); updUI();
         if (!over && gameMode === 'ai' && turn === 'b') schedAI();
+        syncChallengeState();
     }
 
     if (skipAnim) { commit(); return }
@@ -193,11 +200,12 @@ function getSqEl(r, c) {
 }
 
 function showPromo(col, m) {
-    const opts = col === 'w' ? [['Q', '♕'], ['R', '♖'], ['B', '♗'], ['N', '♘']] :
-        [['Q', '♛'], ['R', '♜'], ['B', '♝'], ['N', '♞']];
+    const opts = [['Q', '♛'], ['R', '♜'], ['B', '♝'], ['N', '♞']];
     const c = document.getElementById('promo-choices'); c.innerHTML = '';
     opts.forEach(([t, g]) => {
-        const btn = document.createElement('button'); btn.className = 'promo-btn'; btn.textContent = g;
+        const btn = document.createElement('button'); 
+        btn.className = 'promo-btn ' + (col === 'w' ? 'white-piece' : 'black-piece'); 
+        btn.textContent = g;
         btn.onclick = () => {
             document.getElementById('promo-overlay').classList.remove('open');
             const pm = pending; pending = null;
@@ -210,6 +218,7 @@ function showPromo(col, m) {
             else if (st2) { over = true; showGO('Stalemate', 'The game is drawn') }
             renderB(); updUI();
             if (!over && gameMode === 'ai' && turn === 'b') schedAI();
+            syncChallengeState();
         };
         c.appendChild(btn);
     });
@@ -300,7 +309,8 @@ function renderB() {
             if (sel && lvs.length) { const mv = lvs.find(m => m.tr === r && m.tc === c); if (mv) sq.classList.add(board[r][c] ? 'can-cap' : 'can-move') }
             if (board[r][c]) {
                 const piece = document.createElement('div');
-                piece.className = 'piece';
+                const pColor = board[r][c][0];
+                piece.className = 'piece ' + (pColor === 'w' ? 'white-piece' : 'black-piece');
                 piece.textContent = G[board[r][c]];
                 sq.appendChild(piece);
             }
@@ -340,7 +350,11 @@ function sqFromEvent(e) {
     return d2s(dr, dc);
 }
 
-function canInteract() { return !over && !pending && !aiWorking && !animating }
+function canInteract() { 
+    if (over || pending || aiWorking || animating) return false;
+    if (activeChallengeId && turn !== myPlayerColor) return false;
+    return true;
+}
 
 // ── DRAG ──
 function onPointerDown(e) {
@@ -376,6 +390,11 @@ function startDrag(clientX, clientY) {
     lvs = legal(board, r, c, ep, cr);
     // Show flying piece at cursor
     fp.textContent = dragState.glyph;
+    
+    const pieceCode = board[r][c];
+    const isWhite = pieceCode && pieceCode[0] === 'w';
+    fp.className = 'piece ' + (isWhite ? 'white-piece' : 'black-piece');
+    
     fp.style.transition = 'none';
     fp.classList.remove('animate');
     fp.style.display = 'block';
@@ -391,8 +410,9 @@ function positionFlyingAtCursor(clientX, clientY) {
     const boardEl = document.getElementById('board');
     const rect = boardEl.getBoundingClientRect();
     const fsz = parseFloat(getComputedStyle(fp).fontSize) || 36;
-    fp.style.left = (clientX - rect.left - fsz * 0.6) + 'px';
-    fp.style.top = (clientY - rect.top - fsz * 0.7) + 'px';
+    const x = clientX - rect.left - fsz * 0.6;
+    const y = clientY - rect.top - fsz * 0.7;
+    fp.style.transform = `translate3d(${x}px, ${y}px, 0) scale(1.22)`;
 }
 
 function onPointerMove(e) {
@@ -418,36 +438,65 @@ function onTouchMove(e) {
     positionFlyingAtCursor(t.clientX, t.clientY);
 }
 
+function handleRelease(ds, sq) {
+    // Measure current position before modifying display/styles
+    const boardEl = document.getElementById('board');
+    const rect = boardEl.getBoundingClientRect();
+    const fpRect = fp.getBoundingClientRect();
+    const curX = fpRect.left - rect.left;
+    const curY = fpRect.top - rect.top;
+
+    fp.style.display = 'none'; 
+    fp.classList.remove('drag-scale');
+    const srcEl = getSqEl(ds.r, ds.c); 
+    if (srcEl) srcEl.classList.remove('dragging-src');
+    
+    if (!sq) { 
+        sel = null; 
+        lvs = []; 
+        renderB(); 
+        return; 
+    }
+    const [tr, tc] = sq;
+    const mv = lvs.find(m => m.tr === tr && m.tc === tc);
+    if (mv) {
+        sel = null; 
+        lvs = [];
+        const to = pieceCenter(tr, tc);
+        fp.style.display = 'block'; 
+        fp.textContent = ds.glyph;
+        
+        const pCode = board[ds.r][ds.c];
+        const isWhite = pCode && pCode[0] === 'w';
+        fp.className = 'piece ' + (isWhite ? 'white-piece' : 'black-piece');
+        
+        fp.classList.remove('animate', 'drag-scale');
+        fp.style.transform = `translate3d(${curX}px, ${curY}px, 0) scale(1.15)`;
+        fp.getBoundingClientRect(); // force reflow
+        
+        fp.classList.add('animate');
+        fp.style.transform = `translate3d(${to.x}px, ${to.y}px, 0) scale(1)`;
+        animating = true;
+        
+        setTimeout(() => { 
+            fp.style.display = 'none'; 
+            fp.classList.remove('animate'); 
+            animating = false; 
+            doMove(mv, null, true); 
+        }, 200);
+    } else {
+        sel = null; 
+        lvs = []; 
+        renderB();
+    }
+}
+
 function onPointerUp(e) {
     if (!dragState) return;
     const ds = dragState; dragState = null;
     if (!ds.dragging) { return } // will be handled by click
-    fp.style.display = 'none'; fp.classList.remove('drag-scale');
-    const srcEl = getSqEl(ds.r, ds.c); if (srcEl) srcEl.classList.remove('dragging-src');
     const sq = sqFromEvent(e);
-    if (!sq) { sel = null; lvs = []; renderB(); return }
-    const [tr, tc] = sq;
-    const mv = lvs.find(m => m.tr === tr && m.tc === tc);
-    if (mv) {
-        sel = null; lvs = [];
-        // Animate landing from cursor to center of target sq
-        const boardEl = document.getElementById('board');
-        const rect = boardEl.getBoundingClientRect();
-        const fsz = parseFloat(getComputedStyle(fp).fontSize) || 36;
-        const curX = parseFloat(fp.style.left);
-        const curY = parseFloat(fp.style.top);
-        const to = pieceCenter(tr, tc);
-        fp.style.display = 'block'; fp.textContent = ds.glyph;
-        fp.classList.remove('animate', 'drag-scale');
-        fp.style.left = curX + 'px'; fp.style.top = curY + 'px'; fp.style.transform = 'scale(1.15)';
-        fp.getBoundingClientRect();
-        fp.classList.add('animate');
-        fp.style.left = to.x + 'px'; fp.style.top = to.y + 'px'; fp.style.transform = 'scale(1)';
-        animating = true;
-        setTimeout(() => { fp.style.display = 'none'; fp.classList.remove('animate'); animating = false; doMove(mv, null, true); }, 200);
-    } else {
-        sel = null; lvs = []; renderB();
-    }
+    handleRelease(ds, sq);
 }
 
 function onTouchEnd(e) {
@@ -459,15 +508,9 @@ function onTouchEnd(e) {
         if (sq) handleClick(sq[0], sq[1]);
         return;
     }
-    fp.style.display = 'none'; fp.classList.remove('drag-scale');
-    const srcEl = getSqEl(ds.r, ds.c); if (srcEl) srcEl.classList.remove('dragging-src');
-    const fakeEv = { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
-    const sq = sqFromEvent(fakeEv);
-    if (!sq) { sel = null; lvs = []; renderB(); return }
-    const [tr, tc] = sq;
-    const mv = lvs.find(m => m.tr === tr && m.tc === tc);
-    if (mv) { sel = null; lvs = []; doMove(mv, null, false) }
-    else { sel = null; lvs = []; renderB() }
+    const t = e.changedTouches[0];
+    const sq = sqFromEvent({ clientX: t.clientX, clientY: t.clientY });
+    handleRelease(ds, sq);
 }
 
 // ── CLICK ──
@@ -508,8 +551,8 @@ function updUI() {
     const sm = document.getElementById('status-main'), ss = document.getElementById('status-sub');
     if (over) { sm.textContent = 'Game over'; sm.className = 'status-main'; ss.textContent = 'Press New Game' }
     else { sm.textContent = (turn === 'w' ? 'White' : 'Black') + ' to move'; sm.className = 'status-main' + (chk(board, turn) ? ' check' : ''); const ph = mhist.length < 8 ? 'Opening' : mhist.length < 25 ? 'Middlegame' : 'Endgame'; ss.textContent = chk(board, turn) ? '⚠ King in check' : ph }
-    document.getElementById('cap-white').innerHTML = capW.map(p => '<span>' + G[p] + '</span>').join('');
-    document.getElementById('cap-black').innerHTML = capB.map(p => '<span>' + G[p] + '</span>').join('');
+    document.getElementById('cap-white').innerHTML = capW.map(p => `<span class="black-piece">${G[p]}</span>`).join('');
+    document.getElementById('cap-black').innerHTML = capB.map(p => `<span class="white-piece">${G[p]}</span>`).join('');
     const hl = document.getElementById('hist-list');
     const pairs = []; let i = 0;
     while (i < mhist.length) { const pr = { n: Math.floor(i / 2) + 1, w: '', b: '' }; if (mhist[i]?.col === 'w') pr.w = mhist[i].a; else if (mhist[i]) pr.b = mhist[i].a; i++; if (i < mhist.length && mhist[i].col === 'b') { pr.b = mhist[i].a; i++ } pairs.push(pr) }
@@ -520,8 +563,35 @@ function updUI() {
 /* ================================================================
    CONTROLS
 ================================================================ */
-function newGame() { document.getElementById('gameover').classList.remove('show'); fp.style.display = 'none'; animating = false; init(); updateModeUI(); renderB(); renderLabels(); updUI() }
-function undoMove() { if (!shist.length || aiWorking || animating) return; let s = gameMode === 'ai' ? 2 : 1; while (s-- > 0 && shist.length) rst(shist.pop()); sel = null; lvs = []; over = false; document.getElementById('gameover').classList.remove('show'); renderB(); updUI() }
+function newGame() { 
+    if (activeChallengeId) {
+        if (!confirm("This will disconnect you from the active online game. Are you sure?")) {
+            return;
+        }
+        if (challengeUnsubscribe) {
+            challengeUnsubscribe();
+            challengeUnsubscribe = null;
+        }
+        activeChallengeId = null;
+        document.getElementById('btn-resign-game').style.display = 'none';
+    }
+    document.getElementById('gameover').classList.remove('show'); fp.style.display = 'none'; animating = false; init(); updateModeUI(); renderB(); renderLabels(); updUI();
+}
+function undoMove() { 
+    if (activeChallengeId) {
+        alert("Undo is disabled in online multiplayer matches.");
+        return;
+    }
+    if (!shist.length || aiWorking || animating) return; 
+    let s = gameMode === 'ai' ? 2 : 1; 
+    while (s-- > 0 && shist.length) rst(shist.pop()); 
+    sel = null; 
+    lvs = []; 
+    over = false; 
+    document.getElementById('gameover').classList.remove('show'); 
+    renderB(); 
+    updUI(); 
+}
 function flipBoard() { flipped = !flipped; sel = null; lvs = []; renderB(); renderLabels() }
 function setMode(m) { gameMode = m; document.getElementById('mode-human').classList.toggle('active', m === 'human'); document.getElementById('mode-ai').classList.toggle('active', m === 'ai'); updateModeUI(); newGame() }
 function setDiff(d) { diff = d; document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('active', +b.dataset.d === d)) }
@@ -582,6 +652,17 @@ function navigateTo(viewName) {
     if (viewName === 'home') {
         document.getElementById('home-view').style.display = 'block';
         document.getElementById('link-home').classList.add('active');
+        
+        // Disconnect from active online challenge if returning to home
+        if (activeChallengeId) {
+            if (challengeUnsubscribe) {
+                challengeUnsubscribe();
+                challengeUnsubscribe = null;
+            }
+            activeChallengeId = null;
+            document.getElementById('btn-resign-game').style.display = 'none';
+        }
+        
         updateStatsDisplay();
     } else if (viewName === 'game') {
         document.getElementById('game-view').style.display = 'block';
@@ -627,10 +708,26 @@ function updateUserInterface() {
                 <button class="nav-logout" onclick="handleLogout()">Sign Out</button>
             </div>
         `;
+        const socialCard = document.getElementById('social-card');
+        if (socialCard) socialCard.style.display = 'block';
+        
+        startSocialHubListener();
+        startChallengesListener();
     } else {
         authSection.innerHTML = `
             <button class="nav-btn" onclick="window.location.href='./Login-signup/signin.html'">Sign In</button>
         `;
+        const socialCard = document.getElementById('social-card');
+        if (socialCard) socialCard.style.display = 'none';
+        
+        if (socialUnsubscribe) {
+            socialUnsubscribe();
+            socialUnsubscribe = null;
+        }
+        if (challengesUnsubscribe) {
+            challengesUnsubscribe();
+            challengesUnsubscribe = null;
+        }
     }
 }
 
@@ -646,6 +743,28 @@ function updateStatsDisplay() {
         }
         displayName = activeUser;
         document.getElementById('stats-auth-prompt').style.display = 'none';
+        
+        // Fetch latest stats from Firestore asynchronously
+        if (window.firebaseReady && window.db) {
+            db.collection('users').doc(activeUser).get().then(doc => {
+                if (doc.exists) {
+                    const userData = doc.data();
+                    if (userData.stats) {
+                        // Update cache
+                        const usersCache = JSON.parse(localStorage.getItem('users') || '{}');
+                        if (usersCache[activeUser]) {
+                            usersCache[activeUser].stats = userData.stats;
+                            localStorage.setItem('users', JSON.stringify(usersCache));
+                        }
+                        // Update UI stats elements
+                        document.getElementById('stat-played').textContent = userData.stats.played;
+                        document.getElementById('stat-wins').textContent = userData.stats.wins;
+                        document.getElementById('stat-losses').textContent = userData.stats.losses;
+                        document.getElementById('stat-draws').textContent = userData.stats.draws;
+                    }
+                }
+            }).catch(err => console.error("Error fetching stats from Firestore:", err));
+        }
     } else {
         const guestStats = JSON.parse(localStorage.getItem('guestStats') || '{"played": 0, "wins": 0, "losses": 0, "draws": 0}');
         stats = guestStats;
@@ -671,12 +790,39 @@ function updateStatsDisplay() {
 }
 
 function updateLeaderboardDisplay(activeUser) {
-    const users = JSON.parse(localStorage.getItem('users') || '{}');
     const leaderboardList = document.getElementById('leaderboard-list');
     if (!leaderboardList) return;
 
-    // Filter and sort registered users who have played games
-    const sortedUsers = Object.values(users).filter(u => u.stats && u.stats.played > 0);
+    // 1. Initial render from local cache
+    const localUsers = JSON.parse(localStorage.getItem('users') || '{}');
+    renderLeaderboardRows(Object.values(localUsers), activeUser);
+
+    // 2. Async render from Firestore
+    if (window.firebaseReady && window.db) {
+        db.collection('users').get().then(querySnapshot => {
+            const firestoreUsers = [];
+            querySnapshot.forEach(doc => {
+                firestoreUsers.push(doc.data());
+            });
+            
+            // Sync local storage cache
+            const cachedUsers = {};
+            firestoreUsers.forEach(u => {
+                cachedUsers[u.username] = u;
+            });
+            localStorage.setItem('users', JSON.stringify(cachedUsers));
+
+            // Re-render rows
+            renderLeaderboardRows(firestoreUsers, activeUser);
+        }).catch(err => console.error("Error reading leaderboard from Firestore:", err));
+    }
+}
+
+function renderLeaderboardRows(usersList, activeUser) {
+    const leaderboardList = document.getElementById('leaderboard-list');
+    if (!leaderboardList) return;
+
+    const sortedUsers = usersList.filter(u => u.stats && u.stats.played > 0);
     
     sortedUsers.sort((a, b) => {
         if (b.stats.wins !== a.stats.wins) {
@@ -722,6 +868,7 @@ function updateLeaderboardDisplay(activeUser) {
 function recordGameResult(result) {
     const activeUser = localStorage.getItem('currentUser');
     if (activeUser) {
+        // Optimistic local update
         const users = JSON.parse(localStorage.getItem('users') || '{}');
         if (users[activeUser]) {
             if (!users[activeUser].stats) {
@@ -734,7 +881,37 @@ function recordGameResult(result) {
             
             localStorage.setItem('users', JSON.stringify(users));
         }
+
+        // Firestore database transaction update
+        if (window.firebaseReady && window.db) {
+            const userRef = db.collection('users').doc(activeUser);
+            db.runTransaction(async (transaction) => {
+                const sfDoc = await transaction.get(userRef);
+                if (!sfDoc.exists) {
+                    const localUserData = JSON.parse(localStorage.getItem('users') || '{}')[activeUser];
+                    if (localUserData) {
+                        transaction.set(userRef, localUserData);
+                    }
+                    return;
+                }
+                const currentStats = sfDoc.data().stats || { played: 0, wins: 0, losses: 0, draws: 0 };
+                const nextStats = {
+                    played: currentStats.played + 1,
+                    wins: currentStats.wins + (result === 'win' ? 1 : 0),
+                    losses: currentStats.losses + (result === 'loss' ? 1 : 0),
+                    draws: currentStats.draws + (result === 'draw' ? 1 : 0)
+                };
+                transaction.update(userRef, { stats: nextStats });
+            }).then(() => {
+                console.log("Stats transaction committed successfully to Firestore.");
+                // Fetch stats again to make sure UI is up-to-date
+                updateStatsDisplay();
+            }).catch(err => {
+                console.error("Firestore stats transaction failed:", err);
+            });
+        }
     } else {
+        // Guest account: Keep exclusively in localStorage (won't be added to Firestore)
         const guestStats = JSON.parse(localStorage.getItem('guestStats') || '{"played": 0, "wins": 0, "losses": 0, "draws": 0}');
         guestStats.played += 1;
         if (result === 'win') guestStats.wins += 1;
@@ -747,6 +924,674 @@ function recordGameResult(result) {
 }
 
 /* ================================================================
+   MULTIPLAYER GAMEPLAY SYNC & SOCIAL SYSTEM
+   ================================================================ */
+function syncChallengeState() {
+    if (!activeChallengeId || !window.firebaseReady || !window.db) return;
+    
+    const activeUser = localStorage.getItem('currentUser');
+    const challengerUsername = myPlayerColor === 'w' ? activeUser : opponentUsername;
+    const challengedUsername = myPlayerColor === 'b' ? activeUser : opponentUsername;
+    
+    let winner = null;
+    if (over) {
+        const statusMain = document.getElementById('status-main').textContent;
+        const statusSub = document.getElementById('status-sub').textContent;
+        if (statusSub.includes("drawn") || statusMain.includes("Stalemate")) {
+            winner = 'draw';
+        } else {
+            winner = turn === 'w' ? challengedUsername : challengerUsername;
+        }
+    }
+    
+    db.collection('challenges').doc(activeChallengeId).update({
+        board: board,
+        turn: turn,
+        mhist: mhist,
+        lf: lf,
+        lt: lt,
+        ep: ep,
+        cr: cr,
+        over: over,
+        winner: winner,
+        status: over ? 'completed' : 'playing',
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.error("Error syncing challenge state:", err));
+}
+
+function listenToChallenge(challengeId) {
+    if (challengeUnsubscribe) challengeUnsubscribe();
+    
+    const activeUser = localStorage.getItem('currentUser');
+    
+    challengeUnsubscribe = db.collection('challenges').doc(challengeId).onSnapshot(doc => {
+        if (!doc.exists) return;
+        const data = doc.data();
+        
+        if (data.status === 'playing') {
+            if (data.challenger === activeUser) {
+                myPlayerColor = data.challengerColor;
+                opponentUsername = data.challenged;
+            } else if (data.challenged === activeUser) {
+                myPlayerColor = data.challengerColor === 'w' ? 'b' : 'w';
+                opponentUsername = data.challenger;
+            }
+            
+            document.getElementById('btn-resign-game').style.display = 'inline-block';
+            
+            const isAI = gameMode === 'ai';
+            if (!isAI) {
+                document.getElementById('white-name').textContent = myPlayerColor === 'w' ? activeUser : opponentUsername;
+                document.getElementById('black-name').textContent = myPlayerColor === 'b' ? activeUser : opponentUsername;
+            }
+            
+            if (JSON.stringify(board) !== JSON.stringify(data.board) || over !== data.over || turn !== data.turn) {
+                board = data.board;
+                turn = data.turn;
+                mhist = data.mhist;
+                lf = data.lf;
+                lt = data.lt;
+                ep = data.ep;
+                cr = data.cr;
+                over = data.over;
+                
+                renderB();
+                updUI();
+                
+                if (over) {
+                    const winner = data.winner;
+                    if (winner === 'draw') {
+                        showGO('Stalemate', 'The game is drawn');
+                    } else {
+                        showGO('Checkmate', winner + ' wins');
+                    }
+                    document.getElementById('btn-resign-game').style.display = 'none';
+                }
+            }
+        } else if (data.status === 'completed') {
+            if (JSON.stringify(board) !== JSON.stringify(data.board) || !over) {
+                board = data.board;
+                turn = data.turn;
+                mhist = data.mhist;
+                lf = data.lf;
+                lt = data.lt;
+                ep = data.ep;
+                cr = data.cr;
+                over = data.over;
+                renderB();
+                updUI();
+            }
+            
+            if (!over) {
+                over = true;
+                const winner = data.winner;
+                if (winner === 'draw') {
+                    showGO('Stalemate', 'The game is drawn');
+                } else {
+                    showGO('Resignation', winner + ' wins by resignation');
+                    if (winner === activeUser) {
+                        recordGameResult('win');
+                    }
+                }
+            }
+            document.getElementById('btn-resign-game').style.display = 'none';
+        }
+    }, err => {
+        console.error("Challenge listen error:", err);
+    });
+}
+
+function resignChallenge() {
+    if (!activeChallengeId || !window.firebaseReady || !window.db) return;
+    if (confirm("Are you sure you want to resign the match?")) {
+        const winner = opponentUsername;
+        db.collection('challenges').doc(activeChallengeId).update({
+            over: true,
+            winner: winner,
+            status: 'completed',
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            recordGameResult('loss');
+        }).catch(err => console.error("Resignation failed:", err));
+    }
+}
+
+function checkURLChallenge() {
+    const params = new URLSearchParams(window.location.search);
+    const challengeId = params.get('challengeId');
+    if (!challengeId) return;
+    
+    const activeUser = localStorage.getItem('currentUser');
+    if (!activeUser) {
+        localStorage.setItem('pendingChallengeId', challengeId);
+        alert("You have been invited to a chess match! Please Sign In or Create an Account to play.");
+        window.location.href = './Login-signup/signin.html';
+        return;
+    }
+    
+    db.collection('challenges').doc(challengeId).get().then(async doc => {
+        if (!doc.exists) {
+            alert("Invite link is invalid or has expired.");
+            return;
+        }
+        
+        const data = doc.data();
+        activeChallengeId = challengeId;
+        
+        if (data.status === 'pending') {
+            if (data.challenger !== activeUser) {
+                myPlayerColor = data.challengerColor === 'w' ? 'b' : 'w';
+                opponentUsername = data.challenger;
+                
+                await db.collection('challenges').doc(challengeId).update({
+                    challenged: activeUser,
+                    status: 'playing',
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                myPlayerColor = data.challengerColor;
+                opponentUsername = null;
+                alert("Waiting for an opponent to join. Share the link with a friend!");
+            }
+        } else if (data.status === 'playing') {
+            if (data.challenger === activeUser) {
+                myPlayerColor = data.challengerColor;
+                opponentUsername = data.challenged;
+            } else if (data.challenged === activeUser) {
+                myPlayerColor = data.challengerColor === 'w' ? 'b' : 'w';
+                opponentUsername = data.challenger;
+            } else {
+                alert("This game is already in progress between two other players.");
+                activeChallengeId = null;
+                return;
+            }
+        } else if (data.status === 'completed') {
+            alert("This game has already finished.");
+            activeChallengeId = null;
+            return;
+        }
+        
+        gameMode = 'human';
+        flipped = (myPlayerColor === 'b');
+        
+        board = data.board;
+        turn = data.turn;
+        mhist = data.mhist;
+        lf = data.lf;
+        lt = data.lt;
+        ep = data.ep;
+        cr = data.cr;
+        over = data.over;
+        
+        navigateTo('game');
+        newGameMultiplayer();
+        listenToChallenge(challengeId);
+    }).catch(err => {
+        console.error("Error loading challenge:", err);
+    });
+}
+
+function newGameMultiplayer() {
+    document.getElementById('gameover').classList.remove('show');
+    fp.style.display = 'none';
+    animating = false;
+    updateModeUI();
+    renderB();
+    renderLabels();
+    updUI();
+}
+
+function setSocialTab(tab) {
+    activeSocialTab = tab;
+    document.getElementById('stab-friends').classList.toggle('active', tab === 'friends');
+    document.getElementById('stab-challenges').classList.toggle('active', tab === 'challenges');
+    document.getElementById('social-tab-friends').style.display = tab === 'friends' ? 'block' : 'none';
+    document.getElementById('social-tab-challenges').style.display = tab === 'challenges' ? 'block' : 'none';
+}
+
+async function handleAddFriend(event) {
+    event.preventDefault();
+    const activeUser = localStorage.getItem('currentUser');
+    const targetUser = document.getElementById('friend-username-input').value.trim();
+    const msgEl = document.getElementById('add-friend-message');
+    
+    msgEl.style.display = 'none';
+    msgEl.className = 'social-msg';
+    
+    if (activeUser === targetUser) {
+        msgEl.textContent = "You cannot add yourself as a friend.";
+        msgEl.classList.add('error');
+        msgEl.style.display = 'block';
+        return;
+    }
+    
+    if (!window.firebaseReady || !window.db) return;
+    
+    try {
+        const userDoc = await db.collection('users').doc(targetUser).get();
+        if (!userDoc.exists) {
+            msgEl.textContent = "User '" + targetUser + "' does not exist.";
+            msgEl.classList.add('error');
+            msgEl.style.display = 'block';
+            return;
+        }
+        
+        const checkDoc = await db.collection('users').doc(activeUser).collection('friends').doc(targetUser).get();
+        if (checkDoc.exists) {
+            const rel = checkDoc.data();
+            if (rel.status === 'friend') {
+                msgEl.textContent = targetUser + " is already your friend.";
+            } else if (rel.status === 'sent') {
+                msgEl.textContent = "Friend request already sent to " + targetUser + ".";
+            } else if (rel.status === 'received') {
+                msgEl.textContent = "You have a pending friend request from " + targetUser + ". Please accept it.";
+            }
+            msgEl.classList.add('error');
+            msgEl.style.display = 'block';
+            return;
+        }
+        
+        const batch = db.batch();
+        batch.set(db.collection('users').doc(activeUser).collection('friends').doc(targetUser), {
+            status: 'sent',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        batch.set(db.collection('users').doc(targetUser).collection('friends').doc(activeUser), {
+            status: 'received',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        await batch.commit();
+        
+        msgEl.textContent = "Friend request sent to " + targetUser + "!";
+        msgEl.classList.add('success');
+        msgEl.style.display = 'block';
+        document.getElementById('friend-username-input').value = '';
+    } catch (err) {
+        console.error("Error adding friend:", err);
+        msgEl.textContent = "An error occurred. Please try again.";
+        msgEl.classList.add('error');
+        msgEl.style.display = 'block';
+    }
+}
+
+function startSocialHubListener() {
+    if (socialUnsubscribe) socialUnsubscribe();
+    
+    const activeUser = localStorage.getItem('currentUser');
+    if (!activeUser || !window.firebaseReady || !window.db) return;
+    
+    socialUnsubscribe = db.collection('users').doc(activeUser).collection('friends')
+        .onSnapshot(snapshot => {
+            const friends = [];
+            snapshot.forEach(doc => {
+                friends.push({ username: doc.id, ...doc.data() });
+            });
+            renderSocialFriends(friends);
+        }, err => {
+            console.error("Friends subscription error:", err);
+        });
+}
+
+function startChallengesListener() {
+    if (challengesUnsubscribe) challengesUnsubscribe();
+    const activeUser = localStorage.getItem('currentUser');
+    if (!activeUser || !window.firebaseReady || !window.db) return;
+    
+    const activeChallenges = {};
+    
+    const updateList = () => {
+        renderSocialChallenges(Object.values(activeChallenges));
+    };
+    
+    const u1 = db.collection('challenges')
+        .where('challenger', '==', activeUser)
+        .where('status', 'in', ['pending', 'playing'])
+        .onSnapshot(snapshot => {
+            snapshot.forEach(doc => {
+                activeChallenges[doc.id] = { id: doc.id, ...doc.data() };
+            });
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'removed' || change.doc.data().status === 'completed') {
+                    delete activeChallenges[change.doc.id];
+                }
+            });
+            updateList();
+        });
+        
+    const u2 = db.collection('challenges')
+        .where('challenged', '==', activeUser)
+        .where('status', 'in', ['pending', 'playing'])
+        .onSnapshot(snapshot => {
+            snapshot.forEach(doc => {
+                activeChallenges[doc.id] = { id: doc.id, ...doc.data() };
+            });
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'removed' || change.doc.data().status === 'completed') {
+                    delete activeChallenges[change.doc.id];
+                }
+            });
+            updateList();
+        });
+        
+    challengesUnsubscribe = () => {
+        u1();
+        u2();
+    };
+}
+
+function renderSocialFriends(friends) {
+    const listEl = document.getElementById('friends-list');
+    if (!listEl) return;
+    
+    if (friends.length === 0) {
+        listEl.innerHTML = '<div class="social-placeholder">No friends or pending requests yet.</div>';
+        return;
+    }
+    
+    let html = '';
+    friends.sort((a, b) => {
+        if (a.status !== b.status) {
+            const order = { 'received': 1, 'sent': 2, 'friend': 3 };
+            return order[a.status] - order[b.status];
+        }
+        return a.username.localeCompare(b.username);
+    });
+    
+    friends.forEach(f => {
+        if (f.status === 'friend') {
+            html += `
+                <div class="social-item">
+                    <span class="social-item-name">👤 ${f.username}</span>
+                    <div class="social-item-actions">
+                        <button class="social-btn social-btn-challenge" onclick="challengeFriend('${f.username}')">⚔️ Challenge</button>
+                        <button class="social-btn social-btn-reject" onclick="removeFriend('${f.username}')">Remove</button>
+                    </div>
+                </div>
+            `;
+        } else if (f.status === 'received') {
+            html += `
+                <div class="social-item">
+                    <span class="social-item-name">👤 ${f.username} <span class="social-item-badge pending-in">Received</span></span>
+                    <div class="social-item-actions">
+                        <button class="social-btn social-btn-accept" onclick="acceptFriendRequest('${f.username}')">Accept</button>
+                        <button class="social-btn social-btn-reject" onclick="rejectFriendRequest('${f.username}')">Reject</button>
+                    </div>
+                </div>
+            `;
+        } else if (f.status === 'sent') {
+            html += `
+                <div class="social-item">
+                    <span class="social-item-name">👤 ${f.username} <span class="social-item-badge pending-out">Sent</span></span>
+                    <div class="social-item-actions">
+                        <button class="social-btn social-btn-reject" onclick="rejectFriendRequest('${f.username}')">Cancel</button>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    listEl.innerHTML = html;
+}
+
+function renderSocialChallenges(challenges) {
+    const listEl = document.getElementById('challenges-list');
+    if (!listEl) return;
+    
+    const activeList = challenges.filter(c => c.status !== 'completed');
+    
+    if (activeList.length === 0) {
+        listEl.innerHTML = '<div class="social-placeholder">No active invites or games.</div>';
+        return;
+    }
+    
+    const activeUser = localStorage.getItem('currentUser');
+    let html = '';
+    
+    activeList.forEach(c => {
+        if (c.status === 'pending') {
+            if (c.challenger === activeUser) {
+                const invitee = c.challenged ? c.challenged : "Anyone (Open Link)";
+                const linkUrl = window.location.origin + window.location.pathname + '?challengeId=' + c.id;
+                html += `
+                    <div class="social-item">
+                        <div>
+                            <div style="font-weight: 500;">Sent to: ${invitee}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Waiting for opponent</div>
+                        </div>
+                        <div class="social-item-actions">
+                            <button class="social-btn social-btn-challenge" onclick="showChallengeLinkModal('${linkUrl}')">🔗 Link</button>
+                            <button class="social-btn social-btn-reject" onclick="cancelChallenge('${c.id}')">Cancel</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="social-item">
+                        <div>
+                            <div style="font-weight: 500;">From: ${c.challenger}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Challenged you to a match!</div>
+                        </div>
+                        <div class="social-item-actions">
+                            <button class="social-btn social-btn-accept" onclick="acceptChallenge('${c.id}')">🎮 Accept</button>
+                            <button class="social-btn social-btn-reject" onclick="cancelChallenge('${c.id}')">Decline</button>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (c.status === 'playing') {
+            const oppName = c.challenger === activeUser ? c.challenged : c.challenger;
+            html += `
+                <div class="social-item" style="border-color: var(--glass-border-highlight);">
+                    <div>
+                        <div style="font-weight: 500; color: var(--accent-secondary);">⚔️ vs ${oppName}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${c.turn === 'w' ? 'White' : 'Black'}'s turn</div>
+                    </div>
+                    <div class="social-item-actions">
+                        <button class="social-btn social-btn-accept" onclick="resumeChallenge('${c.id}')">Play</button>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    listEl.innerHTML = html;
+}
+
+async function acceptFriendRequest(friendUsername) {
+    const activeUser = localStorage.getItem('currentUser');
+    if (!window.firebaseReady || !window.db) return;
+    
+    try {
+        const batch = db.batch();
+        batch.update(db.collection('users').doc(activeUser).collection('friends').doc(friendUsername), {
+            status: 'friend',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        batch.update(db.collection('users').doc(friendUsername).collection('friends').doc(activeUser), {
+            status: 'friend',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await batch.commit();
+    } catch (err) {
+        console.error("Failed to accept friend request:", err);
+    }
+}
+
+async function rejectFriendRequest(friendUsername) {
+    const activeUser = localStorage.getItem('currentUser');
+    if (!window.firebaseReady || !window.db) return;
+    
+    try {
+        const batch = db.batch();
+        batch.delete(db.collection('users').doc(activeUser).collection('friends').doc(friendUsername));
+        batch.delete(db.collection('users').doc(friendUsername).collection('friends').doc(activeUser));
+        await batch.commit();
+    } catch (err) {
+        console.error("Failed to reject friend request:", err);
+    }
+}
+
+async function removeFriend(friendUsername) {
+    if (confirm("Are you sure you want to remove " + friendUsername + " from your friends list?")) {
+        rejectFriendRequest(friendUsername);
+    }
+}
+
+async function challengeFriend(friendUsername) {
+    const activeUser = localStorage.getItem('currentUser');
+    if (!window.firebaseReady || !window.db) return;
+    
+    try {
+        init();
+        
+        const newChallenge = {
+            challenger: activeUser,
+            challenged: friendUsername,
+            challengerColor: 'w',
+            status: 'pending',
+            board: board,
+            turn: 'w',
+            mhist: [],
+            lf: null,
+            lt: null,
+            ep: null,
+            cr: { wK: true, wQ: true, bK: true, bQ: true },
+            over: false,
+            winner: null,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await db.collection('challenges').add(newChallenge);
+        alert("Challenge sent to " + friendUsername + "! Waiting for them to accept.");
+        setSocialTab('challenges');
+    } catch (err) {
+        console.error("Failed to challenge friend:", err);
+    }
+}
+
+async function createChallengeLink() {
+    const activeUser = localStorage.getItem('currentUser');
+    if (!window.firebaseReady || !window.db) return;
+    
+    try {
+        init();
+        
+        const newChallenge = {
+            challenger: activeUser,
+            challenged: null,
+            challengerColor: 'w',
+            status: 'pending',
+            board: board,
+            turn: 'w',
+            mhist: [],
+            lf: null,
+            lt: null,
+            ep: null,
+            cr: { wK: true, wQ: true, bK: true, bQ: true },
+            over: false,
+            winner: null,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        const docRef = await db.collection('challenges').add(newChallenge);
+        const linkUrl = window.location.origin + window.location.pathname + '?challengeId=' + docRef.id;
+        
+        showChallengeLinkModal(linkUrl);
+    } catch (err) {
+        console.error("Failed to create invite link:", err);
+    }
+}
+
+async function cancelChallenge(challengeId) {
+    if (!window.firebaseReady || !window.db) return;
+    try {
+        await db.collection('challenges').doc(challengeId).delete();
+    } catch (err) {
+        console.error("Failed to cancel challenge:", err);
+    }
+}
+
+async function acceptChallenge(challengeId) {
+    const activeUser = localStorage.getItem('currentUser');
+    if (!window.firebaseReady || !window.db) return;
+    
+    try {
+        await db.collection('challenges').doc(challengeId).update({
+            status: 'playing',
+            challenged: activeUser,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        resumeChallenge(challengeId);
+    } catch (err) {
+        console.error("Failed to accept challenge:", err);
+    }
+}
+
+function resumeChallenge(challengeId) {
+    const activeUser = localStorage.getItem('currentUser');
+    if (!window.firebaseReady || !window.db) return;
+    
+    db.collection('challenges').doc(challengeId).get().then(doc => {
+        if (!doc.exists) return;
+        const data = doc.data();
+        
+        activeChallengeId = challengeId;
+        gameMode = 'human';
+        
+        if (data.challenger === activeUser) {
+            myPlayerColor = data.challengerColor;
+            opponentUsername = data.challenged;
+        } else if (data.challenged === activeUser) {
+            myPlayerColor = data.challengerColor === 'w' ? 'b' : 'w';
+            opponentUsername = data.challenger;
+        }
+        
+        flipped = (myPlayerColor === 'b');
+        
+        board = data.board;
+        turn = data.turn;
+        mhist = data.mhist;
+        lf = data.lf;
+        lt = data.lt;
+        ep = data.ep;
+        cr = data.cr;
+        over = data.over;
+        
+        document.getElementById('btn-resign-game').style.display = 'inline-block';
+        
+        navigateTo('game');
+        newGameMultiplayer();
+        listenToChallenge(challengeId);
+    });
+}
+
+function showChallengeLinkModal(url) {
+    document.getElementById('challenge-link-input').value = url;
+    document.getElementById('challenge-link-overlay').classList.add('open');
+}
+
+function closeChallengeLinkModal() {
+    document.getElementById('challenge-link-overlay').classList.remove('open');
+}
+
+function copyChallengeLinkText() {
+    const input = document.getElementById('challenge-link-input');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    
+    try {
+        navigator.clipboard.writeText(input.value).then(() => {
+            alert("Invite link copied to clipboard!");
+        });
+    } catch (err) {
+        document.execCommand('copy');
+        alert("Invite link copied to clipboard!");
+    }
+}
+
+/* ================================================================
    INIT
 ================================================================ */
 init();
@@ -755,3 +1600,6 @@ renderLabels();
 updUI();
 updateUserInterface();
 updateStatsDisplay();
+
+// Check URL for challenge invitations on startup
+checkURLChallenge();

@@ -82,6 +82,11 @@
         </div>
     </div>
 
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="../Database/firebase-db.js"></script>
+
     <script>
         function togglePasswordVisibility(inputId) {
             const input = document.getElementById(inputId);
@@ -92,7 +97,7 @@
             }
         }
 
-        function handleLoginSubmit(event) {
+        async function handleLoginSubmit(event) {
             event.preventDefault();
             const identifier = document.getElementById('login-username').value.trim();
             const passwordInput = document.getElementById('login-password').value;
@@ -100,16 +105,54 @@
             
             errorEl.style.display = 'none';
             
-            // Retrieve users
-            const users = JSON.parse(localStorage.getItem('users') || '{}');
-            
-            // Search user by Username, Email, or Phone
             let matchedUser = null;
-            for (const username in users) {
-                const user = users[username];
-                if (username === identifier || user.email === identifier || user.phone === identifier) {
-                    matchedUser = user;
-                    break;
+            let usingFirebase = false;
+
+            // 1. Try Firestore login if Firebase is ready
+            if (window.firebaseReady && window.db) {
+                try {
+                    const submitBtn = event.target.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn.textContent;
+                    submitBtn.textContent = 'Verifying...';
+                    submitBtn.disabled = true;
+
+                    // Search username directly first
+                    const userDoc = await db.collection('users').doc(identifier).get();
+                    if (userDoc.exists) {
+                        matchedUser = userDoc.data();
+                        usingFirebase = true;
+                    } else {
+                        // Search by Gmail address
+                        const emailQuery = await db.collection('users').where('email', '==', identifier).get();
+                        if (!emailQuery.empty) {
+                            matchedUser = emailQuery.docs[0].data();
+                            usingFirebase = true;
+                        } else {
+                            // Search by Phone number
+                            const phoneQuery = await db.collection('users').where('phone', '==', identifier).get();
+                            if (!phoneQuery.empty) {
+                                matchedUser = phoneQuery.docs[0].data();
+                                usingFirebase = true;
+                            }
+                        }
+                    }
+
+                    submitBtn.textContent = originalBtnText;
+                    submitBtn.disabled = false;
+                } catch (error) {
+                    console.error("Firestore signin failed, falling back to localStorage:", error);
+                }
+            }
+            
+            // 2. Local Storage fallback if firebase login is offline/not initialized or not found in Firestore
+            if (!matchedUser) {
+                const users = JSON.parse(localStorage.getItem('users') || '{}');
+                for (const username in users) {
+                    const user = users[username];
+                    if (username === identifier || user.email === identifier || user.phone === identifier) {
+                        matchedUser = user;
+                        break;
+                    }
                 }
             }
             
@@ -119,7 +162,7 @@
                 return;
             }
             
-            // Login successful
+            // Login successful, set session username
             localStorage.setItem('currentUser', matchedUser.username);
             
             // Transfer any guest statistics to the logged-in user if they have 0 games played
@@ -127,14 +170,35 @@
             if (guestStats.played > 0) {
                 if (!matchedUser.stats || matchedUser.stats.played === 0) {
                     matchedUser.stats = guestStats;
+                    
+                    // Save guest stats to Firestore if logged in via Firestore
+                    if (usingFirebase && window.firebaseReady && window.db) {
+                        try {
+                            await db.collection('users').doc(matchedUser.username).update({
+                                stats: guestStats
+                            });
+                        } catch (err) {
+                            console.error("Failed to sync guest stats to Firestore:", err);
+                        }
+                    }
+                    
+                    // Also sync back to LocalStorage
+                    const users = JSON.parse(localStorage.getItem('users') || '{}');
+                    users[matchedUser.username] = matchedUser;
                     localStorage.setItem('users', JSON.stringify(users));
                 }
                 // Clear guest statistics
                 localStorage.removeItem('guestStats');
             }
             
-            // Redirect back to home dashboard
-            window.location.href = '../index.html';
+            // Redirect back to home dashboard or the pending challenge if one exists
+            const pendingChallengeId = localStorage.getItem('pendingChallengeId');
+            if (pendingChallengeId) {
+                localStorage.removeItem('pendingChallengeId');
+                window.location.href = '../index.html?challengeId=' + pendingChallengeId;
+            } else {
+                window.location.href = '../index.html';
+            }
         }
     </script>
 </body>
