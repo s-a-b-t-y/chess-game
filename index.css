@@ -552,31 +552,188 @@ html[data-theme="midnight"] .nebula {
 
 .visual-blur-circle {
     position: absolute;
-    width: 180px;
-    height: 180px;
+    width: 200px;
+    height: 200px;
     border-radius: 50%;
-    background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 80%);
-    opacity: 0.35;
-    animation: rotateVisualBlur 10s infinite linear;
+    background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 70%);
+    opacity: 0.4;
+    filter: blur(20px);
+    animation: rotateVisualBlur 15s infinite linear;
 }
 
 @keyframes rotateVisualBlur {
-    0% { transform: rotate(0deg) translate(20px, 0); }
-    100% { transform: rotate(360deg) translate(20px, 0); }
+    0% { transform: rotate(0deg) translate(15px, 0); }
+    100% { transform: rotate(360deg) translate(15px, 0); }
 }
 
-.preview-pieces {
-    font-size: 4rem;
-    letter-spacing: 5px;
-    font-weight: 400;
-    color: var(--text-primary);
-    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
-    animation: floatVisualPieces 4s infinite ease-in-out;
+/* 3D Chess Board Scene */
+.scene-3d {
+    width: 280px;
+    height: 280px;
+    perspective: 800px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
 }
 
-@keyframes floatVisualPieces {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-12px); }
+.board-3d {
+    width: 200px;
+    height: 200px;
+    transform: rotateX(55deg) rotateZ(-45deg);
+    transform-style: preserve-3d;
+    position: relative;
+    animation: floatBoard 6s infinite ease-in-out;
+}
+
+@keyframes floatBoard {
+    0%, 100% {
+        transform: rotateX(55deg) rotateZ(-45deg) translateY(0px);
+    }
+    50% {
+        transform: rotateX(52deg) rotateZ(-43deg) translateY(-8px);
+    }
+}
+
+.grid-3d {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    width: 100%;
+    height: 100%;
+    border: 3px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(10, 14, 30, 0.6);
+    box-shadow: 
+        0 15px 35px rgba(0, 0, 0, 0.5),
+        inset 0 0 15px rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(4px);
+    transform-style: preserve-3d;
+}
+
+.tile-3d {
+    width: 100%;
+    height: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    transition: all 0.3s ease;
+}
+
+.tile-3d.light {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tile-3d.dark {
+    background: rgba(99, 102, 241, 0.12);
+}
+
+.tile-3d:hover {
+    background: rgba(6, 182, 212, 0.25);
+    box-shadow: inset 0 0 10px rgba(6, 182, 212, 0.5);
+    border-color: rgba(6, 182, 212, 0.4);
+}
+
+.pieces-3d {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    pointer-events: none;
+}
+
+.piece-3d-wrapper {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease;
+    transform: translateZ(20px) rotateX(-90deg) rotateY(45deg);
+}
+
+/* 4x4 Grid positioning (each square is 50px of the 200px board) */
+.p-0-1 { left: 50px; top: 0px; }
+.p-1-2 { left: 100px; top: 50px; }
+.p-2-1 { left: 50px; top: 100px; }
+.p-3-2 { left: 100px; top: 150px; }
+
+/* Glowing vector chess piece paths */
+.piece-svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: filter 0.3s ease;
+}
+
+.knight-svg {
+    stroke: #06b6d4; /* Cyan accent */
+    fill: rgba(6, 182, 212, 0.1);
+    filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.5));
+}
+
+.queen-svg {
+    stroke: #a855f7; /* Purple accent */
+    fill: rgba(168, 85, 247, 0.1);
+    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.5));
+}
+
+.king-svg {
+    stroke: #6366f1; /* Indigo accent */
+    fill: rgba(99, 102, 241, 0.1);
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.5));
+}
+
+.bishop-svg {
+    stroke: #10b981; /* Emerald green accent */
+    fill: rgba(16, 185, 129, 0.1);
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5));
+}
+
+.piece-svg:hover {
+    filter: drop-shadow(0 0 15px currentColor);
+}
+
+.piece-eye {
+    fill: #05070f !important;
+}
+
+/* Piece bobbing and counter-scaling shadows */
+.float-1 .piece-svg { animation: bobPiece 4s infinite ease-in-out; }
+.float-2 .piece-svg { animation: bobPiece 4.3s infinite ease-in-out reverse; }
+.float-3 .piece-svg { animation: bobPiece 4.6s infinite ease-in-out; }
+.float-4 .piece-svg { animation: bobPiece 4.9s infinite ease-in-out reverse; }
+
+@keyframes bobPiece {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+.piece-shadow {
+    position: absolute;
+    width: 24px;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    left: 13px;
+    bottom: -15px;
+    transform: rotateX(90deg); /* align flat on the board */
+    filter: blur(3px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.float-1 .piece-shadow { animation: scaleShadow 4s infinite ease-in-out; }
+.float-2 .piece-shadow { animation: scaleShadow 4.3s infinite ease-in-out reverse; }
+.float-3 .piece-shadow { animation: scaleShadow 4.6s infinite ease-in-out; }
+.float-4 .piece-shadow { animation: scaleShadow 4.9s infinite ease-in-out reverse; }
+
+@keyframes scaleShadow {
+    0%, 100% { transform: rotateX(90deg) scale(1); opacity: 0.8; filter: blur(3px); }
+    50% { transform: rotateX(90deg) scale(0.6); opacity: 0.3; filter: blur(5px); }
 }
 
 /* ── HOMEPAGE: DASHBOARD GRID ── */
