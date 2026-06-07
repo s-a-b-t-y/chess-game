@@ -646,13 +646,11 @@ function updateStatsDisplay() {
         }
         displayName = activeUser;
         document.getElementById('stats-auth-prompt').style.display = 'none';
-        document.getElementById('leader-user-name').textContent = `${activeUser} (You)`;
     } else {
         const guestStats = JSON.parse(localStorage.getItem('guestStats') || '{"played": 0, "wins": 0, "losses": 0, "draws": 0}');
         stats = guestStats;
         displayName = "Guest";
         document.getElementById('stats-auth-prompt').style.display = 'flex';
-        document.getElementById('leader-user-name').textContent = "You (Guest)";
     }
     
     document.getElementById('stats-username').textContent = displayName;
@@ -661,7 +659,8 @@ function updateStatsDisplay() {
     document.getElementById('stat-losses').textContent = stats.losses;
     document.getElementById('stat-draws').textContent = stats.draws;
     
-    document.getElementById('leader-user-record').textContent = `${stats.wins} / ${stats.losses} / ${stats.draws}`;
+    // Update dynamic leaderboard
+    updateLeaderboardDisplay(activeUser);
     
     // Set custom names for Player 1 / Player 2 based on active username
     const isAI = gameMode === 'ai';
@@ -669,6 +668,55 @@ function updateStatsDisplay() {
     if (!isAI) {
         document.getElementById('black-name').textContent = 'Player 2';
     }
+}
+
+function updateLeaderboardDisplay(activeUser) {
+    const users = JSON.parse(localStorage.getItem('users') || '{}');
+    const leaderboardList = document.getElementById('leaderboard-list');
+    if (!leaderboardList) return;
+
+    // Filter and sort registered users who have played games
+    const sortedUsers = Object.values(users).filter(u => u.stats && u.stats.played > 0);
+    
+    sortedUsers.sort((a, b) => {
+        if (b.stats.wins !== a.stats.wins) {
+            return b.stats.wins - a.stats.wins;
+        }
+        if (b.stats.draws !== a.stats.draws) {
+            return b.stats.draws - a.stats.draws;
+        }
+        return a.stats.played - b.stats.played;
+    });
+
+    let html = `
+        <div class="leader-row header-row">
+            <span>Rank</span>
+            <span>Player</span>
+            <span>Record (W/L/D)</span>
+        </div>
+    `;
+
+    if (sortedUsers.length === 0) {
+        html += `
+            <div style="text-align: center; padding: 20px 10px; color: var(--text-secondary); font-size: 0.82rem; border: 1px dashed var(--glass-border); border-radius: var(--radius-sm); margin-top: 4px;">
+                No ranked players yet. Create an account and play to start the ranking!
+            </div>
+        `;
+    } else {
+        sortedUsers.forEach((user, idx) => {
+            const rank = idx + 1;
+            const isSelf = user.username === activeUser;
+            html += `
+                <div class="leader-row">
+                    <span class="rank-badge${rank <= 3 ? ' rank-' + rank : ''}">${rank}</span>
+                    <span class="player-name">${user.username}${isSelf ? ' (You)' : ''}</span>
+                    <span class="player-record">${user.stats.wins} / ${user.stats.losses} / ${user.stats.draws}</span>
+                </div>
+            `;
+        });
+    }
+
+    leaderboardList.innerHTML = html;
 }
 
 function recordGameResult(result) {
