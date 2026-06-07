@@ -54,6 +54,14 @@
     --input-bg-focus: rgba(0, 0, 0, 0.3);
     --board-shell-bg: rgba(10, 14, 30, 0.8);
     --gameover-bg: rgba(6, 8, 20, 0.95);
+
+    /* Button Theme Variables */
+    --btn-primary-bg: var(--accent-primary);
+    --btn-primary-text: #ffffff;
+    --btn-primary-hover-bg: #5457eb;
+    --btn-primary-hover-text: #ffffff;
+    --btn-primary-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    --btn-accent-text: #ffffff;
 }
 
 html[data-theme="light"] {
@@ -136,6 +144,14 @@ html[data-theme="midnight"] {
     --input-bg-focus: #1a1a1a;
     --board-shell-bg: rgba(10, 10, 10, 0.9);
     --gameover-bg: rgba(0, 0, 0, 0.98);
+
+    /* Button theme overrides for high contrast */
+    --btn-primary-bg: var(--accent-primary);
+    --btn-primary-text: #000000;
+    --btn-primary-hover-bg: #e0e0e0;
+    --btn-primary-hover-text: #000000;
+    --btn-primary-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+    --btn-accent-text: #000000;
 }
 
 html {
@@ -354,23 +370,24 @@ html[data-theme="midnight"] .nebula {
 }
 
 .nav-btn {
-    background: var(--accent-primary);
+    background: var(--btn-primary-bg);
     border: none;
-    color: white;
+    color: var(--btn-primary-text);
     padding: 8px 18px;
     border-radius: 50px;
     font-weight: 500;
     font-size: 0.85rem;
     font-family: 'Outfit', sans-serif;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    box-shadow: var(--btn-primary-shadow);
     transition: all 0.25s ease;
 }
 
 .nav-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
-    background: #5457eb;
+    box-shadow: var(--btn-primary-shadow);
+    background: var(--btn-primary-hover-bg);
+    color: var(--btn-primary-hover-text);
 }
 
 .nav-profile-wrapper {
@@ -493,15 +510,16 @@ html[data-theme="midnight"] .nebula {
 }
 
 .btn-primary {
-    background: var(--accent-primary);
-    color: white;
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    box-shadow: var(--btn-primary-shadow);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    background: #5457eb;
-    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.45);
+    background: var(--btn-primary-hover-bg);
+    color: var(--btn-primary-hover-text);
+    box-shadow: var(--btn-primary-shadow);
 }
 
 .btn-secondary {
@@ -1231,9 +1249,9 @@ html[data-theme="midnight"] .nebula {
 }
 
 .mode-btn.active {
-    background: var(--accent-primary);
-    color: white;
-    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    box-shadow: 0 4px 10px var(--accent-glow);
 }
 
 .mode-btn:hover:not(.active) {
@@ -1341,7 +1359,7 @@ html[data-theme="midnight"] .nebula {
 
 .diff-btn.active {
     background: var(--accent-secondary);
-    color: white;
+    color: var(--btn-accent-text);
     border-color: var(--accent-secondary);
     box-shadow: 0 3px 8px var(--accent-glow-cyan);
 }
@@ -1694,21 +1712,22 @@ html[data-theme="midnight"] .nebula {
 .go-btn {
     padding: 10px 30px;
     border-radius: 50px;
-    background: var(--accent-primary);
+    background: var(--btn-primary-bg);
     border: none;
-    color: white;
+    color: var(--btn-primary-text);
     font-family: 'Outfit', sans-serif;
     font-size: 0.82rem;
     font-weight: 500;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: var(--btn-primary-shadow);
     transition: all 0.2s;
 }
 
 .go-btn:hover {
-    background: #5457eb;
+    background: var(--btn-primary-hover-bg);
+    color: var(--btn-primary-hover-text);
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45);
+    box-shadow: var(--btn-primary-shadow);
 }
 
 /* ── PROMOTION OVERLAY ── */
@@ -1778,6 +1797,7 @@ html[data-theme="midnight"] .nebula {
 .promo-btn:hover {
     background: var(--accent-secondary);
     border-color: var(--accent-secondary);
+    color: var(--btn-accent-text);
     transform: translateY(-4px) scale(1.08);
     box-shadow: 0 6px 20px var(--accent-glow-cyan);
 }
