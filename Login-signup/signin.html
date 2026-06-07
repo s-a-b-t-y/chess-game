@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Nocturne Chess</title>
+    <link rel="shortcut icon" href="../library/Favicon.png" type="image/png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@200;300;400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../index.css">
+    <style>
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 400px;
+            margin: 0;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+            transition: color 0.2s;
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Radial Nebulae Glow Backdrops -->
+    <div class="nebula nebula-1"></div>
+    <div class="nebula nebula-2"></div>
+
+    <div class="auth-container">
+        <div class="card auth-card">
+            <a href="../index.html" class="back-btn">← Back to Dashboard</a>
+            
+            <form id="login-form" class="auth-form" onsubmit="handleLoginSubmit(event)">
+                <div class="form-title">Welcome Back</div>
+                <div class="form-subtitle">Enter your details to access your chess dashboard.</div>
+                
+                <div class="form-group">
+                    <label for="login-username">Username, Email, or Phone</label>
+                    <input type="text" id="login-username" placeholder="e.g. chessmaster" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+                        <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('login-password')">👁</button>
+                    </div>
+                </div>
+
+                <div class="auth-error" id="login-error" style="display: none;"></div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                <p class="auth-switch-text">Don't have an account? <a href="signup.html"><span>Create one</span></a></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+
+        function handleLoginSubmit(event) {
+            event.preventDefault();
+            const identifier = document.getElementById('login-username').value.trim();
+            const passwordInput = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            
+            errorEl.style.display = 'none';
+            
+            // Retrieve users
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            
+            // Search user by Username, Email, or Phone
+            let matchedUser = null;
+            for (const username in users) {
+                const user = users[username];
+                if (username === identifier || user.email === identifier || user.phone === identifier) {
+                    matchedUser = user;
+                    break;
+                }
+            }
+            
+            if (!matchedUser || matchedUser.password !== passwordInput) {
+                errorEl.textContent = 'Invalid credentials. Please try again.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            // Login successful
+            localStorage.setItem('currentUser', matchedUser.username);
+            
+            // Transfer any guest statistics to the logged-in user if they have 0 games played
+            const guestStats = JSON.parse(localStorage.getItem('guestStats') || '{"played": 0, "wins": 0, "losses": 0, "draws": 0}');
+            if (guestStats.played > 0) {
+                if (!matchedUser.stats || matchedUser.stats.played === 0) {
+                    matchedUser.stats = guestStats;
+                    localStorage.setItem('users', JSON.stringify(users));
+                }
+                // Clear guest statistics
+                localStorage.removeItem('guestStats');
+            }
+            
+            // Redirect back to home dashboard
+            window.location.href = '../index.html';
+        }
+    </script>
+</body>
+
+</html>

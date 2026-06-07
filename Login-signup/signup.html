@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Nocturne Chess</title>
+    <link rel="shortcut icon" href="../library/Favicon.png" type="image/png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@200;300;400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../index.css">
+    <style>
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 400px;
+            margin: 0;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+            transition: color 0.2s;
+        }
+
+        .back-btn:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Radial Nebulae Glow Backdrops -->
+    <div class="nebula nebula-1"></div>
+    <div class="nebula nebula-2"></div>
+
+    <div class="auth-container">
+        <div class="card auth-card">
+            <a href="../index.html" class="back-btn">← Back to Dashboard</a>
+
+            <div class="auth-tabs">
+                <button class="auth-tab-btn active" id="tab-gmail" onclick="setSignupMethod('gmail')">Gmail</button>
+                <button class="auth-tab-btn" id="tab-phone" onclick="setSignupMethod('phone')">Phone Number</button>
+            </div>
+
+            <form id="signup-form" class="auth-form" onsubmit="handleSignupSubmit(event)">
+                <div class="form-title" id="form-title-text">Join via Gmail</div>
+                <div class="form-subtitle">Register to track your stats and compete on the leaderboard.</div>
+                
+                <div class="form-group">
+                    <label for="signup-username">Username</label>
+                    <input type="text" id="signup-username" placeholder="Choose a username (min 3 chars)" required minlength="3" autocomplete="username">
+                </div>
+
+                <!-- Gmail field (shown by default) -->
+                <div class="form-group" id="group-gmail">
+                    <label for="signup-gmail">Gmail Address</label>
+                    <input type="email" id="signup-gmail" placeholder="username@gmail.com" autocomplete="email">
+                </div>
+
+                <!-- Phone field (hidden by default) -->
+                <div class="form-group" id="group-phone" style="display: none;">
+                    <label for="signup-phone">Phone Number</label>
+                    <input type="tel" id="signup-phone" placeholder="e.g. +1234567890" autocomplete="tel">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="signup-password" placeholder="••••••••" required minlength="4" autocomplete="new-password">
+                        <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('signup-password')">👁</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-confirm-password">Confirm Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="signup-confirm-password" placeholder="••••••••" required minlength="4" autocomplete="new-password">
+                        <button type="button" class="pwd-toggle" onclick="togglePasswordVisibility('signup-confirm-password')">👁</button>
+                    </div>
+                </div>
+
+                <div class="auth-error" id="signup-error" style="display: none;"></div>
+                <div class="auth-success" id="signup-success" style="display: none;">Account created successfully! Redirecting to login...</div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
+                <p class="auth-switch-text">Already have an account? <a href="signin.html"><span>Sign In</span></a></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let signupMethod = 'gmail';
+
+        function setSignupMethod(method) {
+            signupMethod = method;
+            const tabGmail = document.getElementById('tab-gmail');
+            const tabPhone = document.getElementById('tab-phone');
+            const groupGmail = document.getElementById('group-gmail');
+            const groupPhone = document.getElementById('group-phone');
+            const formTitle = document.getElementById('form-title-text');
+            
+            const gmailInput = document.getElementById('signup-gmail');
+            const phoneInput = document.getElementById('signup-phone');
+
+            document.getElementById('signup-error').style.display = 'none';
+
+            if (method === 'gmail') {
+                tabGmail.classList.add('active');
+                tabPhone.classList.remove('active');
+                groupGmail.style.display = 'flex';
+                groupPhone.style.display = 'none';
+                formTitle.textContent = 'Join via Gmail';
+                gmailInput.required = true;
+                phoneInput.required = false;
+                phoneInput.value = '';
+            } else {
+                tabGmail.classList.remove('active');
+                tabPhone.classList.add('active');
+                groupGmail.style.display = 'none';
+                groupPhone.style.display = 'flex';
+                formTitle.textContent = 'Join via Phone';
+                gmailInput.required = false;
+                phoneInput.required = true;
+                gmailInput.value = '';
+            }
+        }
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+
+        function handleSignupSubmit(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('signup-username').value.trim();
+            const passwordInput = document.getElementById('signup-password').value;
+            const confirmPasswordInput = document.getElementById('signup-confirm-password').value;
+            const gmailVal = document.getElementById('signup-gmail').value.trim();
+            const phoneVal = document.getElementById('signup-phone').value.trim();
+            const errorEl = document.getElementById('signup-error');
+            const successEl = document.getElementById('signup-success');
+            
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+            
+            // Validation Checks
+            if (usernameInput.length < 3) {
+                errorEl.textContent = 'Username must be at least 3 characters.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            if (signupMethod === 'gmail') {
+                // Validate email format and check if it's Gmail
+                const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+                if (!gmailRegex.test(gmailVal)) {
+                    errorEl.textContent = 'Please enter a valid Gmail address (ending in @gmail.com).';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+            } else {
+                // Validate phone format (digits only, length 8-15)
+                const phoneRegex = /^\+?[0-9]{7,15}$/;
+                if (!phoneRegex.test(phoneVal)) {
+                    errorEl.textContent = 'Please enter a valid phone number (digits only, 7-15 chars).';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+            }
+            
+            if (passwordInput.length < 4) {
+                errorEl.textContent = 'Password must be at least 4 characters.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            if (passwordInput !== confirmPasswordInput) {
+                errorEl.textContent = 'Passwords do not match.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            // Fetch users from localStorage
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            
+            // Check if username is taken
+            if (users[usernameInput]) {
+                errorEl.textContent = 'Username is already taken.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            // Check if email or phone is already registered
+            for (const existingUsername in users) {
+                const user = users[existingUsername];
+                if (signupMethod === 'gmail' && user.email === gmailVal) {
+                    errorEl.textContent = 'This Gmail address is already registered.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                if (signupMethod === 'phone' && user.phone === phoneVal) {
+                    errorEl.textContent = 'This phone number is already registered.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+            }
+            
+            // Register user
+            users[usernameInput] = {
+                username: usernameInput,
+                password: passwordInput,
+                email: signupMethod === 'gmail' ? gmailVal : null,
+                phone: signupMethod === 'phone' ? phoneVal : null,
+                stats: { played: 0, wins: 0, losses: 0, draws: 0 }
+            };
+            
+            localStorage.setItem('users', JSON.stringify(users));
+            successEl.style.display = 'block';
+            
+            // Redirect to login page after 1.5s
+            setTimeout(() => {
+                window.location.href = 'signin.html';
+            }, 1500);
+        }
+
+        // Initialize validators
+        setSignupMethod('gmail');
+    </script>
+</body>
+
+</html>

@@ -4,108 +4,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Classic Chess - Sabty</title>
+    <title>Nocturne Chess - Premium Engine AI</title>
     <link rel="shortcut icon" href="library/Favicon.png" type="image/png">
     <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@200;300;400;500&family=Fira+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@200;300;400;500&family=Fira+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="index.css">
 </head>
 
 <body>
+    <!-- Radial Nebulae Glow Backdrops -->
+    <div class="nebula nebula-1"></div>
+    <div class="nebula nebula-2"></div>
+
     <div id="app">
-        <header class="header">
-            <div class="logo">Classic <span>Chess</span></div>
-            <div class="subtitle">Click to move &nbsp;·&nbsp; Drag &amp; Drop &nbsp;·&nbsp; vs AI</div>
-        </header>
-        <div class="mode-bar">
-            <button class="mode-btn active" id="mode-human" onclick="setMode('human')">👤 Two Players</button>
-            <button class="mode-btn" id="mode-ai" onclick="setMode('ai')">🤖 vs AI</button>
-        </div>
-        <div class="game-wrap">
-            <div class="sidebar">
-                <div class="card" id="black-card">
-                    <div class="card-label">Black</div>
-                    <div class="player-row">
-                        <div class="avatar" id="black-avatar">♛</div>
-                        <div>
-                            <div class="p-name" id="black-name">Player 2</div>
-                            <div class="p-label" id="black-sub">Black pieces</div>
-                        </div>
-                    </div>
-                    <div class="diff-row" id="diff-row" style="display:none">
-                        <button class="diff-btn" data-d="1" onclick="setDiff(1)">Easy</button>
-                        <button class="diff-btn active" data-d="2" onclick="setDiff(2)">Med</button>
-                        <button class="diff-btn" data-d="3" onclick="setDiff(3)">Hard</button>
-                    </div>
-                    <div class="ai-thinking" id="ai-thinking">
-                        <span>Thinking</span>
-                        <span class="dots"><span>•</span><span>•</span><span>•</span></span>
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="nav-brand" onclick="navigateTo('home')">
+                <span class="brand-icon">♞</span>
+                <span class="brand-text">Nocturne <span>Chess</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-item active" id="link-home" onclick="navigateTo('home'); event.preventDefault();">Home</a>
+                <a href="#" class="nav-item" id="link-play-ai" onclick="startNewGame('ai'); event.preventDefault();">vs AI</a>
+                <a href="#" class="nav-item" id="link-play-local" onclick="startNewGame('human'); event.preventDefault();">Two Players</a>
+                <a href="#" class="nav-item" id="link-rules" onclick="scrollToRules(); event.preventDefault();">Rules</a>
+            </div>
+            <div class="nav-auth" id="nav-auth-section">
+                <!-- Will be dynamically updated by index.js -->
+                <button class="nav-btn" onclick="window.location.href='./Login-signup/signin.html'">Sign In</button>
+            </div>
+        </nav>
+
+        <!-- HOMEPAGE VIEW -->
+        <div id="home-view" class="view-screen active">
+            <div class="hero-section">
+                <div class="hero-content">
+                    <span class="hero-badge">Deep Minimax Engine AI</span>
+                    <h1 class="hero-title">Experience Chess in a New Light</h1>
+                    <p class="hero-subtitle">Engage with sophisticated computer intelligence, monitor your progress, and master the board in a sleek, glassmorphic environment.</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary" onclick="startNewGame('ai')">🤖 Play vs AI</button>
+                        <button class="btn btn-secondary" onclick="startNewGame('human')">👥 Two Players</button>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-label">Black captured</div>
-                    <div class="captured-row" id="cap-black"></div>
-                </div>
-                <div class="card">
-                    <div class="card-label">Move history</div>
-                    <div class="history-list" id="hist-list"></div>
+                <div class="hero-visual">
+                    <div class="mock-board-container">
+                        <div class="visual-blur-circle"></div>
+                        <div class="preview-pieces">♞ ♛ ♔ ♝</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="board-wrap">
-                <div class="board-shell" id="board-shell">
-                    <div class="board-inner">
-                        <div class="rank-col" id="rank-col"></div>
-                        <div>
-                            <div id="board">
-                                <!-- flying piece lives inside board for correct absolute positioning -->
-                                <div id="flying-piece"></div>
+            <!-- Dashboard / Statistics Grid -->
+            <div class="home-grid">
+                <div class="card stats-card-wrapper">
+                    <div class="card-label">Your Statistics</div>
+                    <div class="stats-user-info" id="stats-user-greeting">
+                        Playing as <strong id="stats-username">Guest</strong>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-val" id="stat-played">0</span>
+                            <span class="stat-lbl">Played</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val" id="stat-wins">0</span>
+                            <span class="stat-lbl text-win">Wins</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val" id="stat-losses">0</span>
+                            <span class="stat-lbl text-loss">Losses</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val" id="stat-draws">0</span>
+                            <span class="stat-lbl">Draws</span>
+                        </div>
+                    </div>
+                    <div class="stats-cta" id="stats-auth-prompt">
+                        <p>Create an account to persist your stats permanently.</p>
+                        <button class="btn btn-primary btn-sm" onclick="window.location.href='./Login-signup/signup.html'">Sign Up Now</button>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Card -->
+                <div class="card leaderboard-card">
+                    <div class="card-label">Top Challengers</div>
+                    <div class="leaderboard-list">
+                        <div class="leader-row header-row">
+                            <span>Rank</span>
+                            <span>Player</span>
+                            <span>Record (W/L/D)</span>
+                        </div>
+                        <div class="leader-row">
+                            <span class="rank-badge rank-1">1</span>
+                            <span class="player-name">Grandmaster AI 🤖</span>
+                            <span class="player-record">99 / 1 / 0</span>
+                        </div>
+                        <div class="leader-row">
+                            <span class="rank-badge rank-2">2</span>
+                            <span class="player-name">Kasparov_Bot</span>
+                            <span class="player-record">42 / 12 / 4</span>
+                        </div>
+                        <div class="leader-row">
+                            <span class="rank-badge rank-3">3</span>
+                            <span class="player-name" id="leader-user-name">You (Guest)</span>
+                            <span class="player-record" id="leader-user-record">0 / 0 / 0</span>
+                        </div>
+                        <div class="leader-row">
+                            <span class="rank-badge">4</span>
+                            <span class="player-name">DeepBlue_Legacy</span>
+                            <span class="player-record">28 / 22 / 8</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules & FAQ Section -->
+            <div class="card rules-section" id="rules-section">
+                <div class="card-label">How to Play & Controls</div>
+                <div class="rules-accordion">
+                    <details class="rules-details" open>
+                        <summary class="rules-summary">🎮 Basic Operations</summary>
+                        <div class="rules-content">
+                            <p>To move a piece, you can either <strong>Click the piece</strong> and then click the target square, or <strong>Drag & Drop</strong> the piece to its destination square.</p>
+                            <p>Use the controls sidebar to <strong>Undo</strong> moves, <strong>Flip</strong> the board layout, or restart a <strong>New Game</strong>.</p>
+                        </div>
+                    </details>
+                    <details class="rules-details">
+                        <summary class="rules-summary">🤖 Playing against the Minimax AI</summary>
+                        <div class="rules-content">
+                            <p>Switching to <strong>vs AI</strong> mode enables the Minimax engine. The engine computes optimal moves using alpha-beta pruning.</p>
+                            <p>You can choose between three difficulty levels: <strong>Easy</strong> (incorporates randomized noise), <strong>Med</strong> (Medium depth search), and <strong>Hard</strong> (deeper positional lookup).</p>
+                        </div>
+                    </details>
+                    <details class="rules-details">
+                        <summary class="rules-summary">🏆 Rules, Special Moves & Pawn Promotion</summary>
+                        <div class="rules-content">
+                            <p>The game supports standard chess rules including checkmate verification, stalemate detection, castling, and en passant captures.</p>
+                            <p>When a pawn reaches the opposite end of the board, an overlay dialog will prompt you to select a promotion piece (Queen, Rook, Bishop, or Knight).</p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- GAMEPLAY VIEW -->
+        <div id="game-view" class="view-screen" style="display: none;">
+            <div class="game-header">
+                <button class="back-home-btn" onclick="navigateTo('home')">← Back to Dashboard</button>
+                <div class="mode-bar">
+                    <button class="mode-btn active" id="mode-human" onclick="setMode('human')">👤 Two Players</button>
+                    <button class="mode-btn" id="mode-ai" onclick="setMode('ai')">🤖 vs AI</button>
+                </div>
+            </div>
+            
+            <div class="game-wrap">
+                <!-- BLACK SIDEBAR -->
+                <div class="sidebar">
+                    <div class="card" id="black-card">
+                        <div class="card-label">Black</div>
+                        <div class="player-row">
+                            <div class="avatar" id="black-avatar">♛</div>
+                            <div>
+                                <div class="p-name" id="black-name">Player 2</div>
+                                <div class="p-label" id="black-sub">Black pieces</div>
                             </div>
-                            <div class="file-row" id="file-row"></div>
+                        </div>
+                        <div class="diff-row" id="diff-row" style="display:none">
+                            <button class="diff-btn" data-d="1" onclick="setDiff(1)">Easy</button>
+                            <button class="diff-btn active" data-d="2" onclick="setDiff(2)">Med</button>
+                            <button class="diff-btn" data-d="3" onclick="setDiff(3)">Hard</button>
+                        </div>
+                        <div class="ai-thinking" id="ai-thinking">
+                            <span>Thinking</span>
+                            <span class="dots"><span>•</span><span>•</span><span>•</span></span>
                         </div>
                     </div>
-                    <div class="gameover" id="gameover">
-                        <div class="go-title" id="go-title">Checkmate</div>
-                        <div class="go-sub" id="go-sub">White wins</div>
-                        <button class="go-btn" onclick="newGame()">Play Again</button>
+                    <div class="card">
+                        <div class="card-label">Black captured</div>
+                        <div class="captured-row" id="cap-black"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Move history</div>
+                        <div class="history-list" id="hist-list"></div>
                     </div>
                 </div>
-            </div>
 
-            <div class="sidebar">
-                <div class="card" id="white-card">
-                    <div class="card-label">White</div>
-                    <div class="player-row">
-                        <div class="avatar">♔</div>
-                        <div>
-                            <div class="p-name">Player 1</div>
-                            <div class="p-label">White pieces</div>
+                <!-- GAME BOARD CONTAINER -->
+                <div class="board-wrap">
+                    <div class="board-shell" id="board-shell">
+                        <div class="board-inner">
+                            <div class="rank-col" id="rank-col"></div>
+                            <div>
+                                <div id="board">
+                                    <!-- flying piece lives inside board for correct absolute positioning -->
+                                    <div id="flying-piece"></div>
+                                </div>
+                                <div class="file-row" id="file-row"></div>
+                            </div>
+                        </div>
+                        <div class="gameover" id="gameover">
+                            <div class="go-title" id="go-title">Checkmate</div>
+                            <div class="go-sub" id="go-sub">White wins</div>
+                            <button class="go-btn" onclick="newGame()">Play Again</button>
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-label">White captured</div>
-                    <div class="captured-row" id="cap-white"></div>
-                </div>
-                <div class="card status-card">
-                    <div class="card-label">Status</div>
-                    <div class="status-main" id="status-main">White to move</div>
-                    <div class="status-sub" id="status-sub">Opening</div>
-                </div>
-                <div class="card">
-                    <div class="card-label">Controls</div>
-                    <div class="ctrl-group">
-                        <button class="btn primary" onclick="newGame()">⟳ New Game</button>
-                        <button class="btn" onclick="undoMove()">↩ Undo</button>
-                        <button class="btn" onclick="flipBoard()">⇅ Flip</button>
+
+                <!-- WHITE SIDEBAR -->
+                <div class="sidebar">
+                    <div class="card" id="white-card">
+                        <div class="card-label">White</div>
+                        <div class="player-row">
+                            <div class="avatar" id="white-avatar">♔</div>
+                            <div>
+                                <div class="p-name" id="white-name">Player 1</div>
+                                <div class="p-label" id="white-sub">White pieces</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">White captured</div>
+                        <div class="captured-row" id="cap-white"></div>
+                    </div>
+                    <div class="card status-card">
+                        <div class="card-label">Status</div>
+                        <div class="status-main" id="status-main">White to move</div>
+                        <div class="status-sub" id="status-sub">Opening</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Controls</div>
+                        <div class="ctrl-group">
+                            <button class="btn btn-primary btn-game" onclick="newGame()">⟳ New Game</button>
+                            <button class="btn btn-game" onclick="undoMove()">↩ Undo</button>
+                            <button class="btn btn-game" onclick="flipBoard()">⇅ Flip</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <footer class="footer">Nocturne Chess &nbsp;·&nbsp; Minimax AI · Click or Drag to move</footer>
+
+        <footer class="footer">Nocturne Chess &nbsp;·&nbsp; Minimax AI · Premium UI Overhaul</footer>
     </div>
 
+    <!-- PROMOTION DIALOG OVERLAY -->
     <div class="overlay" id="promo-overlay">
         <div class="promo-modal">
             <div class="promo-title">Promote your pawn</div>

@@ -216,7 +216,22 @@ function showPromo(col, m) {
     document.getElementById('promo-overlay').classList.add('open');
 }
 
-function showGO(t, s) { document.getElementById('go-title').textContent = t; document.getElementById('go-sub').textContent = s; document.getElementById('gameover').classList.add('show') }
+function showGO(t, s) {
+    document.getElementById('go-title').textContent = t;
+    document.getElementById('go-sub').textContent = s;
+    document.getElementById('gameover').classList.add('show');
+    
+    // Intercept game over for statistics
+    if (t === 'Checkmate') {
+        if (s.indexOf('White wins') !== -1) {
+            recordGameResult('win');
+        } else if (s.indexOf('Black wins') !== -1) {
+            recordGameResult('loss');
+        }
+    } else if (t === 'Stalemate') {
+        recordGameResult('draw');
+    }
+}
 
 /* ================================================================
    AI — MINIMAX + ALPHA-BETA
@@ -519,6 +534,142 @@ function updateModeUI() {
 }
 
 /* ================================================================
+   SPA NAVIGATION & AUTHENTICATION
+================================================================ */
+
+function navigateTo(viewName) {
+    document.getElementById('home-view').style.display = 'none';
+    document.getElementById('game-view').style.display = 'none';
+    
+    document.getElementById('link-home').classList.remove('active');
+    document.getElementById('link-play-ai').classList.remove('active');
+    document.getElementById('link-play-local').classList.remove('active');
+    
+    if (viewName === 'home') {
+        document.getElementById('home-view').style.display = 'block';
+        document.getElementById('link-home').classList.add('active');
+        updateStatsDisplay();
+    } else if (viewName === 'game') {
+        document.getElementById('game-view').style.display = 'block';
+        if (gameMode === 'ai') {
+            document.getElementById('link-play-ai').classList.add('active');
+        } else {
+            document.getElementById('link-play-local').classList.add('active');
+        }
+    }
+    window.scrollTo(0, 0);
+}
+
+function scrollToRules() {
+    navigateTo('home');
+    setTimeout(() => {
+        const rulesEl = document.getElementById('rules-section');
+        if (rulesEl) {
+            rulesEl.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, 100);
+}
+
+function startNewGame(mode) {
+    setMode(mode);
+    navigateTo('game');
+}
+
+function handleLogout() {
+    localStorage.removeItem('currentUser');
+    updateUserInterface();
+    updateStatsDisplay();
+    navigateTo('home');
+}
+
+function updateUserInterface() {
+    const activeUser = localStorage.getItem('currentUser');
+    const authSection = document.getElementById('nav-auth-section');
+    
+    if (activeUser) {
+        authSection.innerHTML = `
+            <div class="nav-profile-wrapper">
+                <span class="nav-username">👤 ${activeUser}</span>
+                <button class="nav-logout" onclick="handleLogout()">Sign Out</button>
+            </div>
+        `;
+    } else {
+        authSection.innerHTML = `
+            <button class="nav-btn" onclick="window.location.href='./Login-signup/signin.html'">Sign In</button>
+        `;
+    }
+}
+
+function updateStatsDisplay() {
+    const activeUser = localStorage.getItem('currentUser');
+    let stats = { played: 0, wins: 0, losses: 0, draws: 0 };
+    let displayName = "Guest";
+    
+    if (activeUser) {
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        if (users[activeUser] && users[activeUser].stats) {
+            stats = users[activeUser].stats;
+        }
+        displayName = activeUser;
+        document.getElementById('stats-auth-prompt').style.display = 'none';
+        document.getElementById('leader-user-name').textContent = `${activeUser} (You)`;
+    } else {
+        const guestStats = JSON.parse(localStorage.getItem('guestStats') || '{"played": 0, "wins": 0, "losses": 0, "draws": 0}');
+        stats = guestStats;
+        displayName = "Guest";
+        document.getElementById('stats-auth-prompt').style.display = 'flex';
+        document.getElementById('leader-user-name').textContent = "You (Guest)";
+    }
+    
+    document.getElementById('stats-username').textContent = displayName;
+    document.getElementById('stat-played').textContent = stats.played;
+    document.getElementById('stat-wins').textContent = stats.wins;
+    document.getElementById('stat-losses').textContent = stats.losses;
+    document.getElementById('stat-draws').textContent = stats.draws;
+    
+    document.getElementById('leader-user-record').textContent = `${stats.wins} / ${stats.losses} / ${stats.draws}`;
+    
+    // Set custom names for Player 1 / Player 2 based on active username
+    const isAI = gameMode === 'ai';
+    document.getElementById('white-name').textContent = activeUser ? activeUser : 'Player 1';
+    if (!isAI) {
+        document.getElementById('black-name').textContent = 'Player 2';
+    }
+}
+
+function recordGameResult(result) {
+    const activeUser = localStorage.getItem('currentUser');
+    if (activeUser) {
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        if (users[activeUser]) {
+            if (!users[activeUser].stats) {
+                users[activeUser].stats = { played: 0, wins: 0, losses: 0, draws: 0 };
+            }
+            users[activeUser].stats.played += 1;
+            if (result === 'win') users[activeUser].stats.wins += 1;
+            else if (result === 'loss') users[activeUser].stats.losses += 1;
+            else if (result === 'draw') users[activeUser].stats.draws += 1;
+            
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+    } else {
+        const guestStats = JSON.parse(localStorage.getItem('guestStats') || '{"played": 0, "wins": 0, "losses": 0, "draws": 0}');
+        guestStats.played += 1;
+        if (result === 'win') guestStats.wins += 1;
+        else if (result === 'loss') guestStats.losses += 1;
+        else if (result === 'draw') guestStats.draws += 1;
+        localStorage.setItem('guestStats', JSON.stringify(guestStats));
+    }
+    
+    updateStatsDisplay();
+}
+
+/* ================================================================
    INIT
 ================================================================ */
-init(); renderB(); renderLabels(); updUI();
+init();
+renderB();
+renderLabels();
+updUI();
+updateUserInterface();
+updateStatsDisplay();
