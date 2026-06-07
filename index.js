@@ -528,7 +528,7 @@ function setDiff(d) { diff = d; document.querySelectorAll('.diff-btn').forEach(b
 function updateModeUI() {
     const isAI = gameMode === 'ai';
     document.getElementById('diff-row').style.display = isAI ? 'flex' : 'none';
-    document.getElementById('black-name').textContent = isAI ? 'Nocturne AI' : 'Player 2';
+    document.getElementById('black-name').textContent = isAI ? 'Final Check AI' : 'Player 2';
     const lbl = document.getElementById('black-sub'); lbl.textContent = isAI ? 'Minimax engine' : 'Black pieces'; lbl.className = 'p-label' + (isAI ? ' ai' : '');
     document.getElementById('black-avatar').textContent = isAI ? '🤖' : '♛';
 }
