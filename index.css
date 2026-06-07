@@ -48,6 +48,94 @@
     --sq-last-move: rgba(6, 182, 212, 0.25);
     --sq-check: rgba(244, 63, 94, 0.45);
     --sq-indicator-move: rgba(6, 182, 212, 0.6);
+
+    /* Inputs & Dynamic Component Theme Overrides */
+    --input-bg: rgba(0, 0, 0, 0.2);
+    --input-bg-focus: rgba(0, 0, 0, 0.3);
+    --board-shell-bg: rgba(10, 14, 30, 0.8);
+    --gameover-bg: rgba(6, 8, 20, 0.95);
+}
+
+html[data-theme="light"] {
+    --bg-dark: #f8fafc;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-bg-hover: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(15, 23, 42, 0.08);
+    --glass-border-highlight: rgba(99, 102, 241, 0.25);
+    
+    /* Accents - darker, more saturated for light background */
+    --accent-primary: #4f46e5;
+    --accent-secondary: #0891b2;
+    --accent-purple: #9333ea;
+    --accent-glow: rgba(79, 70, 229, 0.12);
+    --accent-glow-cyan: rgba(8, 145, 178, 0.15);
+    
+    --success: #059669;
+    --error: #dc2626;
+    --warning: #d97706;
+    
+    /* Typography */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    
+    /* Shadows - softer and dark */
+    --shadow-premium: 0 20px 40px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.02);
+    
+    /* Chess Board Specific - light theme colors */
+    --board-light: #f1f5f9;
+    --board-dark: #94a3b8;
+    --sq-selected: rgba(79, 70, 229, 0.25);
+    --sq-last-move: rgba(8, 145, 178, 0.2);
+    --sq-check: rgba(220, 38, 38, 0.25);
+    --sq-indicator-move: rgba(8, 145, 178, 0.45);
+
+    /* Inputs & Overrides */
+    --input-bg: rgba(15, 23, 42, 0.04);
+    --input-bg-focus: rgba(15, 23, 42, 0.08);
+    --board-shell-bg: rgba(255, 255, 255, 0.85);
+    --gameover-bg: rgba(241, 245, 249, 0.96);
+}
+
+html[data-theme="midnight"] {
+    --bg-dark: #000000;
+    --glass-bg: rgba(10, 10, 10, 0.85);
+    --glass-bg-hover: rgba(20, 20, 20, 0.95);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-border-highlight: #ffffff;
+    
+    /* Accents - high contrast */
+    --accent-primary: #ffffff;
+    --accent-secondary: #00ffff;
+    --accent-purple: #ff00ff;
+    --accent-glow: rgba(255, 255, 255, 0.1);
+    --accent-glow-cyan: rgba(0, 255, 255, 0.2);
+    
+    --success: #00ff00;
+    --error: #ff0000;
+    --warning: #ffff00;
+    
+    /* Typography */
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --text-muted: #a0a0a0;
+    
+    /* Shadows - starker, high contrast */
+    --shadow-premium: 0 20px 50px rgba(0, 0, 0, 0.95);
+    
+    /* Chess Board Specific - high contrast white/black */
+    --board-light: #ffffff;
+    --board-dark: #1e1e1e;
+    --sq-selected: rgba(0, 255, 255, 0.45);
+    --sq-last-move: rgba(255, 255, 255, 0.35);
+    --sq-check: rgba(255, 0, 0, 0.5);
+    --sq-indicator-move: rgba(0, 255, 255, 0.75);
+
+    /* Inputs & Overrides */
+    --input-bg: #121212;
+    --input-bg-focus: #1a1a1a;
+    --board-shell-bg: rgba(10, 10, 10, 0.9);
+    --gameover-bg: rgba(0, 0, 0, 0.98);
 }
 
 html {
@@ -66,6 +154,7 @@ body {
     position: relative;
     -webkit-user-select: none;
     user-select: none;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
 }
 
 /* ── NEBULA BACKGROUNDS ── */
@@ -77,6 +166,13 @@ body {
     z-index: 0;
     opacity: 0.45;
     mix-blend-mode: screen;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+html[data-theme="light"] .nebula,
+html[data-theme="midnight"] .nebula {
+    opacity: 0;
+    visibility: hidden;
 }
 
 .nebula-1 {
@@ -218,6 +314,38 @@ body {
     background: var(--accent-secondary);
     border-radius: 10px;
     box-shadow: 0 0 8px var(--accent-secondary);
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.theme-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all 0.25s ease;
+    backdrop-filter: blur(8px);
+}
+
+.theme-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--glass-border-highlight);
+    transform: scale(1.05);
+}
+
+.theme-btn:active {
+    transform: scale(0.95);
 }
 
 .nav-auth {
@@ -808,12 +936,12 @@ body {
 }
 
 .form-group input {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--input-bg);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
     padding: 11px 14px;
     font-family: 'Outfit', sans-serif;
-    color: white;
+    color: var(--text-primary);
     font-size: 0.88rem;
     transition: all 0.2s;
 }
@@ -822,7 +950,7 @@ body {
     border-color: var(--accent-primary);
     outline: none;
     box-shadow: 0 0 0 3px var(--accent-glow);
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--input-bg-focus);
 }
 
 .password-input-wrap {
@@ -853,7 +981,7 @@ body {
 }
 
 .pwd-toggle:hover {
-    color: white;
+    color: var(--text-primary);
 }
 
 .auth-error {
@@ -1214,12 +1342,12 @@ body {
 
 .board-shell {
     position: relative;
-    background: rgba(10, 14, 30, 0.8);
+    background: var(--board-shell-bg);
     border: 1px solid var(--glass-border-highlight);
     border-radius: var(--radius-lg);
     padding: 16px;
     box-shadow: var(--shadow-premium), 0 0 40px rgba(0,0,0,0.4);
-    transition: box-shadow 0.35s;
+    transition: box-shadow 0.35s, background-color 0.3s, border-color 0.3s;
 }
 
 .board-shell.glow {
@@ -1372,7 +1500,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(.85);
-    background: rgba(6, 8, 20, 0.95);
+    background: var(--gameover-bg);
     border: 1px solid var(--glass-border-highlight);
     backdrop-filter: blur(20px);
     border-radius: var(--radius-lg);
@@ -1382,7 +1510,7 @@ body {
     box-shadow: var(--shadow-premium), 0 10px 40px rgba(0,0,0,0.8);
     opacity: 0;
     pointer-events: none;
-    transition: all .35s cubic-bezier(.34, 1.56, .64, 1);
+    transition: opacity 0.35s, transform 0.35s cubic-bezier(.34, 1.56, .64, 1), background-color 0.3s, border-color 0.3s;
     min-width: 250px;
 }
 

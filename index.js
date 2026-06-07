@@ -525,6 +525,40 @@ function undoMove() { if (!shist.length || aiWorking || animating) return; let s
 function flipBoard() { flipped = !flipped; sel = null; lvs = []; renderB(); renderLabels() }
 function setMode(m) { gameMode = m; document.getElementById('mode-human').classList.toggle('active', m === 'human'); document.getElementById('mode-ai').classList.toggle('active', m === 'ai'); updateModeUI(); newGame() }
 function setDiff(d) { diff = d; document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('active', +b.dataset.d === d)) }
+
+/* ================================================================
+   THEME SWITCHING SYSTEM
+================================================================ */
+const themes = ['space', 'light', 'midnight'];
+const themeIcons = {
+    space: '🌌',
+    light: '☀️',
+    midnight: '🌑'
+};
+
+function cycleTheme() {
+    const currentTheme = localStorage.getItem('theme') || 'space';
+    const nextIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
+    const nextTheme = themes[nextIndex];
+    setTheme(nextTheme);
+}
+
+function setTheme(themeName) {
+    localStorage.setItem('theme', themeName);
+    document.documentElement.setAttribute('data-theme', themeName);
+    
+    // Update button icon if button exists
+    const btnIcon = document.querySelector('.theme-icon');
+    if (btnIcon) {
+        btnIcon.textContent = themeIcons[themeName];
+    }
+}
+
+// Sync UI theme icon on script load
+(function initThemeUI() {
+    const savedTheme = localStorage.getItem('theme') || 'space';
+    setTheme(savedTheme);
+})();
 function updateModeUI() {
     const isAI = gameMode === 'ai';
     document.getElementById('diff-row').style.display = isAI ? 'flex' : 'none';
